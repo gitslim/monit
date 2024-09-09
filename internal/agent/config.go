@@ -2,13 +2,14 @@ package agent
 
 import (
 	"flag"
-	"time"
+
+	"github.com/caarlos0/env/v6"
 )
 
 type Config struct {
-	Addr           string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
+	Addr           string  `env:"ADDRESS"`
+	PollInterval   float64 `env:"POLL_INTERVAL"`
+	ReportInterval float64 `env:"REPORT_INTERVAL"`
 }
 
 func ParseConfig() (*Config, error) {
@@ -18,9 +19,12 @@ func ParseConfig() (*Config, error) {
 
 	flag.Parse()
 
-	return &Config{
+	cfg := &Config{
 		Addr:           *addr,
-		PollInterval:   time.Duration(*pollInterval * float64(time.Second)),
-		ReportInterval: time.Duration(*reportInterval * float64(time.Second)),
-	}, nil
+		PollInterval:   *pollInterval,
+		ReportInterval: *reportInterval,
+	}
+
+	env.Parse(cfg)
+	return cfg, nil
 }

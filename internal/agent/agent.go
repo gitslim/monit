@@ -92,10 +92,13 @@ func sendMetrics(serverURL string, metrics map[string]float64, counter int64) {
 }
 
 // Основная функция
-func Start(conf *Config) {
+func Start(cfg *Config) {
+	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
+	pollInterval := time.Duration(cfg.PollInterval * float64(time.Second))
+	reportInterval := time.Duration(cfg.ReportInterval * float64(time.Second))
+
 	metrics := make(map[string]float64)
 	lastReportTime := time.Now() // Время последней отправки метрик
-	serverURL := fmt.Sprintf("http://%s", conf.Addr)
 
 	for {
 		newMetrics := gatherRuntimeMetrics()
@@ -105,12 +108,12 @@ func Start(conf *Config) {
 		pollCount++ // Увеличиваем счетчик PollCount
 
 		// Если прошло 10 секунд с момента последней отправки, отправляем метрики
-		if time.Since(lastReportTime) >= conf.ReportInterval {
+		if time.Since(lastReportTime) >= reportInterval {
 			sendMetrics(serverURL, metrics, pollCount)
 			lastReportTime = time.Now() // Обновляем время последней отправки
 		}
 
 		// Собираем метрики из runtime каждые 2 секунды (pollInterval)
-		time.Sleep(conf.PollInterval)
+		time.Sleep(pollInterval)
 	}
 }

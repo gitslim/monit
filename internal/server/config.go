@@ -2,10 +2,12 @@ package server
 
 import (
 	"flag"
+
+	"github.com/caarlos0/env/v6"
 )
 
 type Config struct {
-	Addr string
+	Addr string `env:"ADDRESS"`
 }
 
 func ParseConfig() (*Config, error) {
@@ -13,7 +15,10 @@ func ParseConfig() (*Config, error) {
 
 	flag.Parse()
 
-	return &Config{
+	cfg := &Config{
 		Addr: *addr,
-	}, nil
+	}
+
+	env.Parse(cfg)
+	return cfg, nil
 }
