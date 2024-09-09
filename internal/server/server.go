@@ -27,7 +27,12 @@ func (s *Server) Start() error {
 // Инициализация сервера с нужными обработчиками
 func New(addr string, metricsHandler *handlers.MetricsHandler) *Server {
 	r := gin.Default()
+	r.LoadHTMLGlob("templates/*")
+
+	// роуты
 	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetrics)
+	r.GET("/value/:type/:name", metricsHandler.GetMetric)
+	r.GET("/", metricsHandler.ListMetrics)
 
 	return NewServer(addr, r)
 }

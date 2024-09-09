@@ -53,3 +53,8 @@ func (s *MemStorage) GetMetric(name string) (string, bool) {
 	}
 	return metric.Get(), true
 }
+
+// Получение всех метрик
+func (s *MemStorage) ListMetrics() map[string]repositories.Metric {
+	return s.metrics
+}

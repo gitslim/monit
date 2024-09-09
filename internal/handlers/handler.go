@@ -18,7 +18,7 @@ func NewMetricsHandler(storage repositories.MetricsRepository) *MetricsHandler {
 	return &MetricsHandler{storage: storage}
 }
 
-// Обработчик обновления метрик
+// Обработчик обновления метрики
 func (h *MetricsHandler) UpdateMetrics(c *gin.Context) {
 	metricType := repositories.MetricType(c.Param("type"))
 	metricName := c.Param("name")
@@ -47,4 +47,37 @@ func (h *MetricsHandler) UpdateMetrics(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "Metric %s updated successfully\n", metricName)
+}
+
+// Обработчик получения метрики
+func (h *MetricsHandler) GetMetric(c *gin.Context) {
+	metricType := repositories.MetricType(c.Param("type"))
+	metricName := c.Param("name")
+
+	if metricType != repositories.GaugeType && metricType != repositories.CounterType {
+		c.String(http.StatusBadRequest, "Invalid metric type: %s", metricType)
+		return
+	}
+
+	if metricName == "" {
+		c.String(http.StatusNotFound, "Metric name missing")
+		return
+	}
+
+	val, exists := h.storage.GetMetric(metricName)
+	if !exists {
+		c.String(http.StatusNotFound, "No such metric: %v", metricName)
+		return
+	}
+
+	c.String(http.StatusOK, val)
+}
+
+// Обработчик вывода списка метрик
+func (h *MetricsHandler) ListMetrics(c *gin.Context) {
+	res := gin.H{
+		"metrics": h.storage.ListMetrics(),
+	}
+
+	c.HTML(http.StatusOK, "metrics.html", res)
 }
