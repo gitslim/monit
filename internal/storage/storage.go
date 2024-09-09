@@ -1,60 +1,50 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
-
-	"github.com/gitslim/monit/internal/repositories"
 )
 
-// MemStorage реализует интерфейс MetricsRepository и хранит метрики
+// MemStorage реализует интерфейс MetricsRepository
 type MemStorage struct {
-	mu      sync.Mutex
-	metrics map[string]repositories.Metric
+	mu       sync.Mutex
+	gauges   map[string]float64
+	counters map[string]int64
 }
 
-// Создаем новое хранилище
+// Конструктор
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		metrics: make(map[string]repositories.Metric),
+		gauges:   make(map[string]float64),
+		counters: make(map[string]int64),
 	}
 }
 
-// Обновление метрики
-func (s *MemStorage) UpdateMetric(metricType repositories.MetricType, name string, value string) error {
+func (s *MemStorage) UpdateGauge(name string, value float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	metric, exists := s.metrics[name]
-	if !exists {
-		// Если метрика не существует, создаем новую в зависимости от типа
-		switch metricType {
-		case repositories.GaugeType:
-			metric = repositories.NewGaugeMetric()
-		case repositories.CounterType:
-			metric = repositories.NewCounterMetric()
-		default:
-			return fmt.Errorf("unknown metric type: %s", metricType)
-		}
-		s.metrics[name] = metric
-	}
-
-	return metric.Update(value)
+	s.gauges[name] = value
 }
 
-// Получение метрики
-func (s *MemStorage) GetMetric(name string) (string, bool) {
+func (s *MemStorage) UpdateCounter(name string, value int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	metric, ok := s.metrics[name]
-	if !ok {
-		return "", false
-	}
-	return metric.Get(), true
+	s.counters[name] += value
 }
 
-// Получение всех метрик
-func (s *MemStorage) ListMetrics() map[string]repositories.Metric {
-	return s.metrics
+func (s *MemStorage) GetGauge(name string) (float64, bool) {
+	val, ok := s.gauges[name]
+	return val, ok
+}
+
+func (s *MemStorage) GetCounter(name string) (int64, bool) {
+	val, ok := s.counters[name]
+	return val, ok
+}
+
+func (s *MemStorage) ListGauges() map[string]float64 {
+	return s.gauges
+}
+
+func (s *MemStorage) ListCounters() map[string]int64 {
+	return s.counters
 }

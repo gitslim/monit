@@ -1,38 +1,22 @@
 package server
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
+	"github.com/gitslim/monit/internal/repositories"
 )
 
-type Server struct {
-	Addr   string
-	Engine *gin.Engine
-}
-
-func NewServer(addr string, engine *gin.Engine) *Server {
-	return &Server{
-		Addr:   addr,
-		Engine: engine,
-	}
-}
-
-func (s *Server) Start() error {
-	log.Printf("Server is starting at %s...\n", s.Addr)
-	return s.Engine.Run(s.Addr)
-}
-
-// Инициализация сервера с нужными обработчиками
-func New(addr string, metricsHandler *handlers.MetricsHandler) *Server {
+func Start(addr string, storage repositories.MetricRepository) error {
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 
-	// роуты
-	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetrics)
-	r.GET("/value/:type/:name", metricsHandler.GetMetric)
-	r.GET("/", metricsHandler.ListMetrics)
+	// Создание хендлера
+	metricHandler := handlers.NewMetricHandler(storage)
 
-	return NewServer(addr, r)
+	// роуты
+	r.GET("/", metricHandler.ListMetrics)
+	r.GET("/value/:type/:name", metricHandler.GetMetric)
+	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
+
+	return r.Run(addr)
 }

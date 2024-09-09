@@ -13,7 +13,5 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
-	log.Printf("cfg: %v\n", cfg)
-
 	agent.Start(cfg)
 }

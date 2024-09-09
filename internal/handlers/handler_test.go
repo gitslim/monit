@@ -13,11 +13,11 @@ import (
 
 func TestUpdateMetrics(t *testing.T) {
 	memStorage := storage.NewMemStorage()
-	metricsHandler := NewMetricsHandler(memStorage)
+	metricsHandler := NewMetricHandler(memStorage)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetrics)
+	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetric)
 
 	type metric struct {
 		typ   string
@@ -74,7 +74,7 @@ func TestUpdateMetrics(t *testing.T) {
 				statusCode: http.StatusNotFound},
 		},
 		{
-			name: "bad value",
+			name: "non digital value",
 			metric: metric{
 				typ:   "gauge",
 				name:  "some",

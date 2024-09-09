@@ -6,25 +6,18 @@ import (
 	"testing"
 )
 
-// Табличный тест для функции sendMetric
 func TestSendMetricTableDriven(t *testing.T) {
-	// Создаем mock HTTP-сервер для обработки запросов
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Путь запроса должен совпадать с тем, что ожидается в тесте
 		if r.URL.Path == "/update/gauge/test_metric/123.45" {
-			w.WriteHeader(http.StatusOK) // Возвращаем успех для конкретного пути
+			w.WriteHeader(http.StatusOK)
 		} else if r.URL.Path == "/update/counter/test_counter/10" {
-			w.WriteHeader(http.StatusOK) // Возвращаем успех для другого пути
+			w.WriteHeader(http.StatusOK)
 		} else {
-			w.WriteHeader(http.StatusBadRequest) // Все остальные пути считаем ошибочными
+			w.WriteHeader(http.StatusBadRequest)
 		}
 	}))
 	defer server.Close()
 
-	// Заменим глобальный serverURL на URL mock-сервера
-	//serverURL = server.URL
-
-	// Таблица тестов
 	tests := []struct {
 		name        string
 		metricType  string
@@ -62,7 +55,6 @@ func TestSendMetricTableDriven(t *testing.T) {
 		},
 	}
 
-	// Проход по каждому тестовому случаю
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := sendMetric(server.URL, tt.metricType, tt.metricName, tt.value)

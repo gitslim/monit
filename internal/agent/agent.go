@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -80,18 +81,17 @@ func sendMetrics(serverURL string, metrics map[string]float64, counter int64) {
 	for name, value := range metrics {
 		err := sendMetric(serverURL, "gauge", name, strconv.FormatFloat(value, 'f', -1, 64))
 		if err != nil {
-			fmt.Printf("Error sending gauge metric %s: %v\n", name, err)
+			log.Printf("Error sending gauge metric %s: %v\n", name, err)
 		}
 	}
 
 	// Отправляем метрику PollCount типа counter
 	err := sendMetric(serverURL, "counter", "PollCount", strconv.FormatInt(counter, 10))
 	if err != nil {
-		fmt.Printf("Error sending counter metric PollCount: %v\n", err)
+		log.Printf("Error sending counter metric PollCount: %v\n", err)
 	}
 }
 
-// Основная функция
 func Start(cfg *Config) {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
 	pollInterval := time.Duration(cfg.PollInterval * float64(time.Second))

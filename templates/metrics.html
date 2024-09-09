@@ -1,19 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metrics</title>
-</head>
-<body>
-    <h1>Metrics</h1>
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metrics</title>
+</head>
+
+<body>
+  <h1>Metrics</h1>
+
+  <h2>Gauges</>
     <ul>
-        {{ range $name, $value := .metrics }}
-            <li><strong>{{ $name }}:</strong> {{ $value }}</li>
-        {{ else }}
-            <li>No metrics found</li>
-        {{ end }}
+      {{ range $name, $value := .gauges }}
+      <li><strong>{{ $name }}:</strong> {{ $value }}</li>
+      {{ else }}
+      <li>No metrics found</li>
+      {{ end }}
     </ul>
+
+    <h2>Counters</>
+      <ul>
+        {{ range $name, $value := .counters }}
+        <li><strong>{{ $name }}:</strong> {{ $value }}</li>
+        {{ else }}
+        <li>No metrics found</li>
+        {{ end }}
+      </ul>
+
 </body>
+
 </html>
