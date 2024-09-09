@@ -8,7 +8,6 @@
 <body>
     <h1>Metrics</h1>
 
-    <h2>Counter Metrics</h2>
     <ul>
         {{ range $name, $value := .metrics }}
             <li><strong>{{ $name }}:</strong> {{ $value }}</li>

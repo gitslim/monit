@@ -7,8 +7,6 @@ import (
 	"runtime"
 	"strconv"
 	"time"
-
-	"github.com/gitslim/monit/internal/config"
 )
 
 var pollCount int64 // Счётчик обновлений PollCount
@@ -94,10 +92,10 @@ func sendMetrics(serverURL string, metrics map[string]float64, counter int64) {
 }
 
 // Основная функция
-func Start(conf *config.Config) {
+func Start(conf *Config) {
 	metrics := make(map[string]float64)
 	lastReportTime := time.Now() // Время последней отправки метрик
-	serverURL := fmt.Sprintf("http://%s:%d", conf.Server.Host, conf.Server.Port)
+	serverURL := fmt.Sprintf("http://%s", conf.Addr)
 
 	for {
 		newMetrics := gatherRuntimeMetrics()
