@@ -30,7 +30,7 @@ func (s *Server) Stop() error {
 }
 
 // Инициализация сервера с нужными обработчиками
-func InitServer(addr string, metricsHandler *handlers.MetricsHandler) *Server {
+func New(addr string, metricsHandler *handlers.MetricsHandler) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/{type}/{name}/{value}", metricsHandler.UpdateMetrics)
 

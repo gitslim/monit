@@ -4,6 +4,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gitslim/monit/internal/repositories"
 )
@@ -24,9 +25,18 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricType := repositories.MetricType(r.PathValue("type"))
-	metricName := r.PathValue("name")
-	metricValue := r.PathValue("value")
+	path := strings.TrimPrefix(r.URL.Path, "/update/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 3 {
+		http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		return
+	}
+
+	metricType := repositories.MetricType(parts[0])
+	metricName := parts[1]
+	metricValue := parts[2]
+
+	fmt.Printf("update metric request: type: %s name: %s value: %s\n", metricType, metricName, metricValue)
 
 	if metricType != repositories.GaugeType && metricType != repositories.CounterType {
 		http.Error(w, fmt.Sprintf("Invalid metric type: %s", metricType), http.StatusBadRequest)
