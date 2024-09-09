@@ -4,8 +4,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/repositories"
 )
 
@@ -19,40 +19,32 @@ func NewMetricsHandler(storage repositories.MetricsRepository) *MetricsHandler {
 }
 
 // Обработчик обновления метрик
-func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid method", http.StatusBadRequest)
-		return
-	}
-
-	path := strings.TrimPrefix(r.URL.Path, "/update/")
-	parts := strings.Split(path, "/")
-	if len(parts) != 3 {
-		http.Error(w, "Invalid URL format", http.StatusBadRequest)
-		return
-	}
-
-	metricType := repositories.MetricType(parts[0])
-	metricName := parts[1]
-	metricValue := parts[2]
+func (h *MetricsHandler) UpdateMetrics(c *gin.Context) {
+	metricType := repositories.MetricType(c.Param("type"))
+	metricName := c.Param("name")
+	metricValue := c.Param("value")
 
 	fmt.Printf("update metric request: type: %s name: %s value: %s\n", metricType, metricName, metricValue)
 
 	if metricType != repositories.GaugeType && metricType != repositories.CounterType {
-		http.Error(w, fmt.Sprintf("Invalid metric type: %s", metricType), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "Invalid metric type: %s", metricType)
 		return
 	}
 
 	if metricName == "" {
-		http.Error(w, "Metric name missing", http.StatusNotFound)
+		c.String(http.StatusNotFound, "Metric name missing")
+		return
+	}
+
+	if metricValue == "" {
+		c.String(http.StatusBadRequest, "Metric value missing")
 		return
 	}
 
 	if err := h.storage.UpdateMetric(metricType, metricName, metricValue); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update metric: %v", err), http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "Failed to update metric: %v", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Metric %s updated successfully\n", metricName)
+	c.String(http.StatusOK, "Metric %s updated successfully\n", metricName)
 }

@@ -6,13 +6,19 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetrics(t *testing.T) {
 	memStorage := storage.NewMemStorage()
-	handler := NewMetricsHandler(memStorage)
+	metricsHandler := NewMetricsHandler(memStorage)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetrics)
+
 	type metric struct {
 		typ   string
 		name  string
@@ -68,11 +74,11 @@ func TestUpdateMetrics(t *testing.T) {
 				statusCode: http.StatusNotFound},
 		},
 		{
-			name: "empty value",
+			name: "bad value",
 			metric: metric{
 				typ:   "gauge",
 				name:  "some",
-				value: "",
+				value: "abc",
 			},
 			want: want{
 				statusCode: http.StatusBadRequest},
@@ -81,15 +87,17 @@ func TestUpdateMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			url := fmt.Sprintf("/update/%s/%s/%s", tt.metric.typ, tt.metric.name, tt.metric.value)
-			request := httptest.NewRequest(http.MethodPost, url, nil)
-			request.Header.Add("Content-Type", "text/plain")
+			req, err := http.NewRequest(http.MethodPost, url, nil)
+			assert.NoError(t, err)
+
+			req.Header.Add("Content-Type", "text/plain")
 			w := httptest.NewRecorder()
-			handler.UpdateMetrics(w, request)
+			r.ServeHTTP(w, req)
 
-			result := w.Result()
-			result.Body.Close()
+			res := w.Result()
+			res.Body.Close()
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 		})
 	}
 }

@@ -2,37 +2,32 @@ package server
 
 import (
 	"log"
-	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
 )
 
 type Server struct {
-	httpServer *http.Server
+	Addr   string
+	Engine *gin.Engine
 }
 
-func NewServer(addr string, handler http.Handler) *Server {
+func NewServer(addr string, engine *gin.Engine) *Server {
 	return &Server{
-		httpServer: &http.Server{
-			Addr:    addr,
-			Handler: handler,
-		},
+		Addr:   addr,
+		Engine: engine,
 	}
 }
 
 func (s *Server) Start() error {
-	log.Printf("Server is starting at %s...\n", s.httpServer.Addr)
-	return s.httpServer.ListenAndServe()
-}
-
-func (s *Server) Stop() error {
-	return s.httpServer.Close()
+	log.Printf("Server is starting at %s...\n", s.Addr)
+	return s.Engine.Run(s.Addr)
 }
 
 // Инициализация сервера с нужными обработчиками
 func New(addr string, metricsHandler *handlers.MetricsHandler) *Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update/{type}/{name}/{value}", metricsHandler.UpdateMetrics)
+	r := gin.Default()
+	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetrics)
 
-	return NewServer(addr, mux)
+	return NewServer(addr, r)
 }
