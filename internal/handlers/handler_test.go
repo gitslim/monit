@@ -87,6 +87,7 @@ func TestUpdateMetrics(t *testing.T) {
 			handler.UpdateMetrics(w, request)
 
 			result := w.Result()
+			result.Body.Close()
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 		})
