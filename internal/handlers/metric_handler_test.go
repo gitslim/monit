@@ -7,17 +7,18 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gitslim/monit/internal/storage"
+	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetrics(t *testing.T) {
-	memStorage := storage.NewMemStorage()
-	metricsHandler := NewMetricHandler(memStorage)
+	metricService, err := services.NewMetricService(services.WithMemStorage())
+	assert.NoError(t, err)
+	metricHandler := NewMetricHandler(metricService)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetric)
+	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
 
 	type metric struct {
 		typ   string
@@ -41,7 +42,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusOK},
+				statusCode: http.StatusOK,
+			},
 		},
 		{
 			name: "valid gauge",
@@ -51,7 +53,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusOK},
+				statusCode: http.StatusOK,
+			},
 		},
 		{
 			name: "invalid type",
@@ -61,7 +64,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest},
+				statusCode: http.StatusBadRequest,
+			},
 		},
 		{
 			name: "empty name",
@@ -71,7 +75,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusNotFound},
+				statusCode: http.StatusNotFound,
+			},
 		},
 		{
 			name: "non digital value",
@@ -81,7 +86,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "abc",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest},
+				statusCode: http.StatusBadRequest,
+			},
 		},
 	}
 	for _, tt := range tests {

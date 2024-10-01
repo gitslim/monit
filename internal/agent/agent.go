@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-var pollCount int64 // Счётчик обновлений PollCount
-
 // Функция для сбора метрик из пакета runtime
 func gatherRuntimeMetrics() map[string]float64 {
 	var memStats runtime.MemStats
@@ -99,6 +97,7 @@ func Start(cfg *Config) {
 
 	metrics := make(map[string]float64)
 	lastReportTime := time.Now() // Время последней отправки метрик
+	var pollCount int64          // Счётчик обновлений PollCount
 
 	for {
 		newMetrics := gatherRuntimeMetrics()
