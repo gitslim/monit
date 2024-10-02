@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -8,6 +10,9 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/gitslim/monit/internal/entities"
+	"github.com/gitslim/monit/internal/errs"
 )
 
 // Функция для сбора метрик из пакета runtime
@@ -52,15 +57,25 @@ func gatherRuntimeMetrics() map[string]float64 {
 }
 
 // Функция для отправки метрики на сервер
-func sendMetric(serverURL, metricType, metricName, value string) error {
-	url := fmt.Sprintf("%s/update/%s/%s/%s", serverURL, metricType, metricName, value)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+func sendMetric(client *http.Client, serverURL string, mType, mName, mValue string) error {
+	url := fmt.Sprintf("%s/update/", serverURL)
+
+	dto, err := entities.NewMetricDTO(mName, mType, mValue)
+	if err != nil {
+		return err
+	}
+
+	jsonData, err := json.Marshal(&dto)
+	if err != nil {
+		return errs.ErrInternal
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
@@ -70,21 +85,36 @@ func sendMetric(serverURL, metricType, metricName, value string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+
+	err = json.NewDecoder(resp.Body).Decode(dto)
+	if err != nil {
+		return fmt.Errorf("json decode error")
+	}
+
+	// var v interface{}
+	// if dto.Delta != nil {
+	// 	v = *dto.Delta
+	// }
+	// if dto.Value != nil {
+	// 	v = *dto.Value
+	// }
+	// fmt.Printf("name: %v, type: %v, value: %v\n", dto.ID, dto.MType, v)
+
 	return nil
 }
 
 // Функция для отправки всех метрик на сервер
-func sendMetrics(serverURL string, metrics map[string]float64, counter int64) {
+func sendMetrics(client *http.Client, serverURL string, metrics map[string]float64, counter int64) {
 	// Отправляем метрики типа gauge
 	for name, value := range metrics {
-		err := sendMetric(serverURL, "gauge", name, strconv.FormatFloat(value, 'f', -1, 64))
+		err := sendMetric(client, serverURL, "gauge", name, strconv.FormatFloat(value, 'f', -1, 64))
 		if err != nil {
 			log.Printf("Error sending gauge metric %s: %v\n", name, err)
 		}
 	}
 
 	// Отправляем метрику PollCount типа counter
-	err := sendMetric(serverURL, "counter", "PollCount", strconv.FormatInt(counter, 10))
+	err := sendMetric(client, serverURL, "counter", "PollCount", strconv.FormatInt(counter, 10))
 	if err != nil {
 		log.Printf("Error sending counter metric PollCount: %v\n", err)
 	}
@@ -99,6 +129,8 @@ func Start(cfg *Config) {
 	lastReportTime := time.Now() // Время последней отправки метрик
 	var pollCount int64          // Счётчик обновлений PollCount
 
+	client := &http.Client{}
+
 	for {
 		newMetrics := gatherRuntimeMetrics()
 		for key, value := range newMetrics {
@@ -108,7 +140,7 @@ func Start(cfg *Config) {
 
 		// Если прошло 10 секунд с момента последней отправки, отправляем метрики
 		if time.Since(lastReportTime) >= reportInterval {
-			sendMetrics(serverURL, metrics, pollCount)
+			sendMetrics(client, serverURL, metrics, pollCount)
 			lastReportTime = time.Now() // Обновляем время последней отправки
 		}
 

@@ -19,8 +19,19 @@ var metricTypeMap = map[string]MetricType{
 	"counter": Counter,
 }
 
+func (m MetricType) String() string {
+	switch m {
+	case Gauge:
+		return "gauge"
+	case Counter:
+		return "counter"
+	default:
+		return ""
+	}
+}
+
 // GetMetricType получает тип метрики из строки
-func GetMetricType(metricTypeStr string) (MetricType, *errs.Error) {
+func GetMetricType(metricTypeStr string) (MetricType, error) {
 	if metricType, ok := metricTypeMap[metricTypeStr]; ok {
 		return metricType, nil
 	}
@@ -32,6 +43,7 @@ type Metric interface {
 	GetName() string
 	GetType() MetricType
 	GetValue() interface{}
+	GetStringValue() string
 	SetValue(interface{}) error
 	String() string
 }
@@ -58,6 +70,10 @@ func (g *GaugeMetric) GetValue() interface{} {
 	return g.Value
 }
 
+func (g *GaugeMetric) GetStringValue() string {
+	return fmt.Sprintf("%v", g.GetValue())
+}
+
 func (g *GaugeMetric) SetValue(value interface{}) error {
 	if v, ok := value.(float64); ok {
 		g.Value = v
@@ -68,7 +84,7 @@ func (g *GaugeMetric) SetValue(value interface{}) error {
 }
 
 func (g *GaugeMetric) String() string {
-	return fmt.Sprintf("%v", g.GetValue())
+	return g.GetStringValue()
 }
 
 // CounterMetric - реализация Counter метрики
@@ -91,6 +107,10 @@ func (c *CounterMetric) GetType() MetricType {
 
 func (c *CounterMetric) GetValue() interface{} {
 	return c.Value
+}
+
+func (c *CounterMetric) GetStringValue() string {
+	return fmt.Sprintf("%v", c.GetValue())
 }
 
 func (c *CounterMetric) SetValue(value interface{}) error {

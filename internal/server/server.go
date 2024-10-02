@@ -33,6 +33,8 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 
 	// роуты
 	r.GET("/", metricHandler.ListMetrics)
+	r.POST("/update/", metricHandler.UpdateMetric)
+	r.POST("/value/", metricHandler.GetMetric)
 	r.GET("/value/:type/:name", metricHandler.GetMetric)
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
 
