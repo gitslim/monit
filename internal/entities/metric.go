@@ -95,7 +95,7 @@ func (c *CounterMetric) GetValue() interface{} {
 
 func (c *CounterMetric) SetValue(value interface{}) error {
 	if v, ok := value.(int64); ok {
-		c.Value = v
+		c.Value += v
 		return nil
 	}
 	return errs.ErrInvalidMetricValue

@@ -48,12 +48,10 @@ func (s *MetricService) GetMetric(name string) (entities.Metric, error) {
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("GetMetric: %v\n", val)
 	return val, nil
 }
 
-func (s *MetricService) SetMetric(mName, mType, mValue string) error {
-	var m entities.Metric
+func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	var v interface{}
 
 	if mName == "" || mType == "" || mValue == "" {
@@ -64,18 +62,15 @@ func (s *MetricService) SetMetric(mName, mType, mValue string) error {
 	if err != nil {
 		return err
 	}
-	// fmt.Printf("SetMetric: %v\n", mValue)
 
 	switch t {
 	case entities.Gauge:
-		m = entities.NewGaugeMetric(mName)
 		val, err := strconv.ParseFloat(mValue, 64)
 		if err != nil {
 			return errs.ErrInvalidMetricValue
 		}
 		v = val
 	case entities.Counter:
-		m = entities.NewCounterMetric(mName)
 		val, err := strconv.ParseInt(mValue, 10, 64)
 		if err != nil {
 			return errs.ErrInvalidMetricValue
@@ -85,10 +80,7 @@ func (s *MetricService) SetMetric(mName, mType, mValue string) error {
 		return errs.ErrInvalidMetricType
 	}
 
-	if err := m.SetValue(v); err != nil {
-		return err
-	}
-	return s.storage.SetMetric(m)
+	return s.storage.UpdateOrCreateMetric(mName, t, v)
 }
 
 func (s *MetricService) GetAllMetrics() map[string]entities.Metric {

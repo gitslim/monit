@@ -33,7 +33,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	mName := c.Param("name")
 	mValue := c.Param("value")
 
-	if err := h.metricService.SetMetric(mName, mType, mValue); err != nil {
+	if err := h.metricService.UpdateMetric(mName, mType, mValue); err != nil {
 		writeError(c, err)
 		return
 	}

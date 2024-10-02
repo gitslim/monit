@@ -20,7 +20,7 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 	gracefulTimeout := 5 * time.Second
 
 	// роутер
-	r := gin.Default()
+	r := gin.New()
 
 	// логгирование через middleware
 	r.Use(middleware.LoggerMiddleware(sugar))

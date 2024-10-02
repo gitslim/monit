@@ -38,7 +38,7 @@ func TestUpdateMetrics(t *testing.T) {
 			name: "valid counter",
 			metric: metric{
 				typ:   "counter",
-				name:  "some",
+				name:  "c1",
 				value: "100",
 			},
 			want: want{
@@ -49,7 +49,7 @@ func TestUpdateMetrics(t *testing.T) {
 			name: "valid gauge",
 			metric: metric{
 				typ:   "gauge",
-				name:  "some",
+				name:  "g1",
 				value: "100",
 			},
 			want: want{
