@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
@@ -22,7 +21,7 @@ func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 }
 
 func isJSONRequest(c *gin.Context) bool {
-	return strings.Contains(c.Request.Header.Get("Content-type"), "json")
+	return c.Request.Header.Get("Content-type") == "application/json"
 }
 
 func writeError(c *gin.Context, err error) {
