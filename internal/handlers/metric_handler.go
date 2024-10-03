@@ -21,7 +21,7 @@ func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 }
 
 func isJSONRequest(c *gin.Context) bool {
-	return c.Request.Header.Get("Content-type") == "application/json"
+	return c.GetHeader("Content-type") == "application/json"
 }
 
 func writeError(c *gin.Context, err error) {

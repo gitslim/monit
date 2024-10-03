@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -56,6 +57,25 @@ func gatherRuntimeMetrics() map[string]float64 {
 	return metrics
 }
 
+func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+
+	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
+	}
+
+	_, err = gzWriter.Write(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
+	}
+
+	if err := gzWriter.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close gzip writer: %v", err)
+	}
+	return &buf, nil
+}
+
 // Функция для отправки метрики на сервер
 func sendMetric(client *http.Client, serverURL string, mType, mName, mValue string) error {
 	url := fmt.Sprintf("%s/update/", serverURL)
@@ -70,11 +90,18 @@ func sendMetric(client *http.Client, serverURL string, mType, mName, mValue stri
 		return errs.ErrInternal
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	buf, err := compressGzip(jsonData, gzip.BestSpeed)
+	if err != nil {
+		return fmt.Errorf("failed to compress with gzip: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {

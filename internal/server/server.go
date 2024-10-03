@@ -22,9 +22,11 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 	// роутер
 	r := gin.New()
 
-	// логгирование через middleware
+	// middlewares
+	r.Use(middleware.GzipMiddleware())
 	r.Use(middleware.LoggerMiddleware(sugar))
-	gin.SetMode(gin.ReleaseMode)
+
+	// gin.SetMode(gin.ReleaseMode)
 
 	r.LoadHTMLGlob("templates/*")
 
