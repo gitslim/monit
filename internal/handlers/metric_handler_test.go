@@ -18,7 +18,7 @@ func TestUpdateMetrics(t *testing.T) {
 		panic("Failed init logger")
 	}
 
-	conf, err := services.WithMemStorage(log, 0, "", false)
+	conf, err := services.WithMemStorage(log, 0, "/tmp/.monit/memstorage.json", false)
 	assert.NoError(t, err)
 
 	metricService, err := services.NewMetricService(conf)

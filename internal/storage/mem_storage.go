@@ -13,8 +13,10 @@ import (
 )
 
 type MemStorage struct {
-	mu      sync.RWMutex
-	metrics map[string]entities.Metric
+	mu         sync.RWMutex
+	metrics    map[string]entities.Metric
+	syncBackup bool
+	backupFd   *os.File
 }
 
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
@@ -62,9 +64,11 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewMemStorage() *MemStorage {
+func NewMemStorage(syncBackup bool, fd *os.File) *MemStorage {
 	return &MemStorage{
-		metrics: make(map[string]entities.Metric),
+		metrics:    make(map[string]entities.Metric),
+		syncBackup: syncBackup,
+		backupFd:   fd,
 	}
 }
 
@@ -92,6 +96,11 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 	}
 
 	s.metrics[mName] = m
+	if s.syncBackup {
+		if err := s.SaveToFile(s.backupFd); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -135,8 +144,8 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 
 // SaveToFile - сохраняет данные хранилища в файл
 func (s *MemStorage) SaveToFile(fd *os.File) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// s.mu.RLock()
+	// defer s.mu.RUnlock()
 
 	data, err := json.Marshal(&s)
 	if err != nil {
@@ -156,8 +165,22 @@ func (s *MemStorage) SaveToFile(fd *os.File) error {
 	return err
 }
 
+// StartPeriodicBackup - запускает периодическое сохранение данных на диск
+func (s *MemStorage) StartPeriodicBackup(fd *os.File, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if err := s.SaveToFile(fd); err != nil {
+			panic(err)
+		}
+	}
+
+	defer fd.Close()
+}
+
 // CreateBackupFile создает файл для записи бэкапа
-func (s *MemStorage) CreateBackupFile(filePath string) (*os.File, error) {
+func CreateBackupFile(filePath string) (*os.File, error) {
 	dir := filepath.Dir(filePath)
 	if dir != "" {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -171,18 +194,4 @@ func (s *MemStorage) CreateBackupFile(filePath string) (*os.File, error) {
 	}
 
 	return fd, nil
-}
-
-// StartPeriodicBackup - запускает периодическое сохранение данных на диск
-func (s *MemStorage) StartPeriodicBackup(fd *os.File, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if err := s.SaveToFile(fd); err != nil {
-			panic(err)
-		}
-	}
-
-	defer fd.Close()
 }

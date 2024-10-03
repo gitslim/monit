@@ -40,24 +40,27 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage(log *logging.Logger, storeInterval float64, fileStoragePath string, restore bool) (MetricServiceConf, error) {
-	storage := storage.NewMemStorage()
+func WithMemStorage(log *logging.Logger, storeInterval uint64, fileStoragePath string, restore bool) (MetricServiceConf, error) {
+	syncBackup := storeInterval == 0
+
+	fd, err := storage.CreateBackupFile(fileStoragePath)
+	if err != nil {
+		return nil, err
+	}
+
+	stor := storage.NewMemStorage(syncBackup, fd)
 	if restore {
 		// Загружаем данные при запуске
-		err := storage.LoadFromFile(fileStoragePath)
+		err := stor.LoadFromFile(fileStoragePath)
 		if err != nil {
-			// return nil, fmt.Errorf("failed to load metrics from file: %v", err)
 			log.Debugf("Failed to load metrics from file: %v", err)
 		}
 	}
+
 	if storeInterval > 0 {
-		fd, err := storage.CreateBackupFile(fileStoragePath)
-		if err != nil {
-			return nil, err
-		}
-		go storage.StartPeriodicBackup(fd, time.Duration(storeInterval)*time.Second)
+		go stor.StartPeriodicBackup(fd, time.Duration(storeInterval)*time.Second)
 	}
-	return WithStorage(storage), nil
+	return WithStorage(stor), nil
 }
 
 func (s *MetricService) GetMetric(name string) (entities.Metric, error) {
