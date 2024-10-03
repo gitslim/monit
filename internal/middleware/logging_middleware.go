@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	"github.com/gitslim/monit/internal/logging"
 )
 
-func LoggerMiddleware(sugar *zap.SugaredLogger) gin.HandlerFunc {
+func LoggerMiddleware(log *logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
@@ -16,7 +16,7 @@ func LoggerMiddleware(sugar *zap.SugaredLogger) gin.HandlerFunc {
 		latency := time.Since(start)
 
 		// логируем запрос
-		sugar.Infow("req",
+		log.Info("req",
 			"URI", c.Request.RequestURI,
 			"method", c.Request.Method,
 			"latency", latency)
@@ -24,7 +24,7 @@ func LoggerMiddleware(sugar *zap.SugaredLogger) gin.HandlerFunc {
 		status := c.Writer.Status()
 		size := c.Writer.Size()
 		// логируем ответ
-		sugar.Infow("resp",
+		log.Info("resp",
 			"status", status,
 			"size", size)
 	}

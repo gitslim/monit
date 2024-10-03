@@ -10,12 +10,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
+	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/middleware"
 	"github.com/gitslim/monit/internal/services"
-	"go.uber.org/zap"
 )
 
-func Start(addr string, sugar *zap.SugaredLogger, metricService *services.MetricService) {
+func Start(addr string, log *logging.Logger, metricService *services.MetricService) {
 	// таймаут ожидания завершения
 	gracefulTimeout := 5 * time.Second
 
@@ -24,7 +24,7 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 
 	// middlewares
 	r.Use(middleware.GzipMiddleware())
-	r.Use(middleware.LoggerMiddleware(sugar))
+	r.Use(middleware.LoggerMiddleware(log))
 
 	// gin.SetMode(gin.ReleaseMode)
 
@@ -49,17 +49,17 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 	// запуск в отдельной горутине
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			sugar.Fatalf("Server failed to start: %v\n", err)
+			log.Fatalf("Server failed to start: %v\n", err)
 		}
 	}()
 
-	sugar.Infof("Server is running on %v\n", addr)
+	log.Infof("Server is running on %v\n", addr)
 
 	// канал для получения сигналов
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	sugar.Info("Shutting down server...")
+	log.Info("Shutting down server...")
 
 	// Создаем контекст с тайм-аутом для завершения работы сервера
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulTimeout)
@@ -67,8 +67,8 @@ func Start(addr string, sugar *zap.SugaredLogger, metricService *services.Metric
 
 	// Инициируем graceful shutdown
 	if err := srv.Shutdown(ctx); err != nil {
-		sugar.Fatalf("Server forced to shutdown:", err)
+		log.Fatalf("Server forced to shutdown:", err)
 	}
 
-	sugar.Info("Server exited")
+	log.Info("Server exited")
 }

@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gitslim/monit/internal/errs"
@@ -54,6 +55,31 @@ type GaugeMetric struct {
 	Value float64
 }
 
+func (g GaugeMetric) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Name  string     `json:"name"`
+		Value float64    `json:"value"`
+		Type  MetricType `json:"type"`
+	}{
+		Name:  g.Name,
+		Value: g.Value,
+		Type:  g.GetType(),
+	})
+}
+
+func (g *GaugeMetric) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Name  string  `json:"name"`
+		Value float64 `json:"value"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	g.Name = temp.Name
+	g.Value = temp.Value
+	return nil
+}
+
 func NewGaugeMetric(name string) *GaugeMetric {
 	return &GaugeMetric{Name: name}
 }
@@ -91,6 +117,31 @@ func (g *GaugeMetric) String() string {
 type CounterMetric struct {
 	Name  string
 	Value int64
+}
+
+func (c CounterMetric) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Name  string     `json:"name"`
+		Value int64      `json:"value"`
+		Type  MetricType `json:"type"`
+	}{
+		Name:  c.Name,
+		Value: c.Value,
+		Type:  c.GetType(),
+	})
+}
+
+func (c *CounterMetric) UnmarshalJSON(data []byte) error {
+	var temp struct {
+		Name  string `json:"name"`
+		Value int64  `json:"value"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	c.Name = temp.Name
+	c.Value = temp.Value
+	return nil
 }
 
 func NewCounterMetric(name string) *CounterMetric {

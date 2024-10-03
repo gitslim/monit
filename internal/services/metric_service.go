@@ -2,9 +2,11 @@ package services
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/storage"
 )
 
@@ -38,9 +40,24 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage() MetricServiceConf {
+func WithMemStorage(log *logging.Logger, storeInterval float64, fileStoragePath string, restore bool) (MetricServiceConf, error) {
 	storage := storage.NewMemStorage()
-	return WithStorage(storage)
+	if restore {
+		// Загружаем данные при запуске
+		err := storage.LoadFromFile(fileStoragePath)
+		if err != nil {
+			// return nil, fmt.Errorf("failed to load metrics from file: %v", err)
+			log.Debugf("Failed to load metrics from file: %v", err)
+		}
+	}
+	if storeInterval > 0 {
+		fd, err := storage.CreateBackupFile(fileStoragePath)
+		if err != nil {
+			return nil, err
+		}
+		go storage.StartPeriodicBackup(fd, time.Duration(storeInterval)*time.Second)
+	}
+	return WithStorage(storage), nil
 }
 
 func (s *MetricService) GetMetric(name string) (entities.Metric, error) {

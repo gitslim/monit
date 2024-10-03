@@ -7,13 +7,23 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetrics(t *testing.T) {
-	metricService, err := services.NewMetricService(services.WithMemStorage())
+	log, err := logging.NewLogger()
+	if err != nil {
+		panic("Failed init logger")
+	}
+
+	conf, err := services.WithMemStorage(log, 0, "", false)
 	assert.NoError(t, err)
+
+	metricService, err := services.NewMetricService(conf)
+	assert.NoError(t, err)
+
 	metricHandler := NewMetricHandler(metricService)
 
 	gin.SetMode(gin.TestMode)

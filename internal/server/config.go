@@ -7,18 +7,31 @@ import (
 )
 
 type Config struct {
-	Addr string `env:"ADDRESS"`
+	Addr            string  `env:"ADDRESS"`
+	StoreInterval   float64 `env:"STORE_INTERVAL"`
+	FileStoragePath string  `env:"FILE_STORAGE_PATH"`
+	Restore         bool    `env:"RESTORE"`
 }
 
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
+	storeInterval := flag.Float64("i", 300, "Интервал сохранения данных на диск (в секундах)")
+	fileStoragePath := flag.String("f", "/tmp/.monit/memstorage.json", "Путь до файла сохранения данных")
+	restore := flag.Bool("r", true, "Флаг загрузки сохраненных данных при старте сервера")
 
 	flag.Parse()
 
 	cfg := &Config{
-		Addr: *addr,
+		Addr:            *addr,
+		StoreInterval:   *storeInterval,
+		FileStoragePath: *fileStoragePath,
+		Restore:         *restore,
 	}
 
-	env.Parse(cfg)
+	err := env.Parse(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
