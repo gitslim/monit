@@ -25,6 +25,10 @@ func ParseConfig() (*Config, error) {
 		ReportInterval: *reportInterval,
 	}
 
-	env.Parse(cfg)
+	err := env.Parse(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }

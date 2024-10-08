@@ -7,17 +7,28 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gitslim/monit/internal/storage"
+	"github.com/gitslim/monit/internal/logging"
+	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateMetrics(t *testing.T) {
-	memStorage := storage.NewMemStorage()
-	metricsHandler := NewMetricHandler(memStorage)
+	log, err := logging.NewLogger()
+	if err != nil {
+		panic("Failed init logger")
+	}
+
+	conf, err := services.WithMemStorage(log, 0, "/tmp/.monit/memstorage.json", false)
+	assert.NoError(t, err)
+
+	metricService, err := services.NewMetricService(conf)
+	assert.NoError(t, err)
+
+	metricHandler := NewMetricHandler(metricService)
 
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.POST("/update/:type/:name/:value", metricsHandler.UpdateMetric)
+	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
 
 	type metric struct {
 		typ   string
@@ -37,21 +48,23 @@ func TestUpdateMetrics(t *testing.T) {
 			name: "valid counter",
 			metric: metric{
 				typ:   "counter",
-				name:  "some",
+				name:  "c1",
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusOK},
+				statusCode: http.StatusOK,
+			},
 		},
 		{
 			name: "valid gauge",
 			metric: metric{
 				typ:   "gauge",
-				name:  "some",
+				name:  "g1",
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusOK},
+				statusCode: http.StatusOK,
+			},
 		},
 		{
 			name: "invalid type",
@@ -61,7 +74,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest},
+				statusCode: http.StatusBadRequest,
+			},
 		},
 		{
 			name: "empty name",
@@ -71,7 +85,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "100",
 			},
 			want: want{
-				statusCode: http.StatusNotFound},
+				statusCode: http.StatusNotFound,
+			},
 		},
 		{
 			name: "non digital value",
@@ -81,7 +96,8 @@ func TestUpdateMetrics(t *testing.T) {
 				value: "abc",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest},
+				statusCode: http.StatusBadRequest,
+			},
 		},
 	}
 	for _, tt := range tests {

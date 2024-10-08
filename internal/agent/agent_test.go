@@ -1,18 +1,22 @@
 package agent
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestSendMetricTableDriven(t *testing.T) {
+	client := &http.Client{}
+	dummyJSON, _ := json.Marshal(nil)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/update/gauge/test_metric/123.45" {
+		switch r.URL.Path {
+		case "/update/":
+			w.Header().Add("Content-type", "application/json")
+			w.Write(dummyJSON)
 			w.WriteHeader(http.StatusOK)
-		} else if r.URL.Path == "/update/counter/test_counter/10" {
-			w.WriteHeader(http.StatusOK)
-		} else {
+		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}))
@@ -57,7 +61,7 @@ func TestSendMetricTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := sendMetric(server.URL, tt.metricType, tt.metricName, tt.value)
+			err := sendMetric(client, server.URL, tt.metricType, tt.metricName, tt.value)
 
 			if (err != nil) != tt.expectedErr {
 				t.Errorf("sendMetric() error = %v, expectedErr %v", err, tt.expectedErr)
