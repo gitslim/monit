@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
@@ -106,7 +107,7 @@ func TestUpdateMetrics(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost, url, nil)
 			assert.NoError(t, err)
 
-			req.Header.Add("Content-Type", "text/plain")
+			req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypePlain)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 

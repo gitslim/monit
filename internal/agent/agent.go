@@ -14,6 +14,7 @@ import (
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/httpconst"
 )
 
 // Функция для сбора метрик из пакета runtime
@@ -100,8 +101,8 @@ func sendMetric(client *http.Client, serverURL string, mType, mName, mValue stri
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+	req.Header.Set(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
 	resp, err := client.Do(req)
 	if err != nil {

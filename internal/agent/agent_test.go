@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gitslim/monit/internal/httpconst"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSendMetricTableDriven(t *testing.T) {
@@ -13,8 +16,9 @@ func TestSendMetricTableDriven(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/update/":
-			w.Header().Add("Content-type", "application/json")
-			w.Write(dummyJSON)
+			w.Header().Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+			_, err := w.Write(dummyJSON)
+			assert.NoError(t, err)
 			w.WriteHeader(http.StatusOK)
 		default:
 			w.WriteHeader(http.StatusBadRequest)

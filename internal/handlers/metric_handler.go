@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/services"
 )
 
@@ -21,7 +22,7 @@ func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 }
 
 func isJSONRequest(c *gin.Context) bool {
-	return c.GetHeader("Content-type") == "application/json"
+	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
 func writeError(c *gin.Context, err error) {
