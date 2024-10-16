@@ -151,8 +151,8 @@ func sendMetrics(client *http.Client, serverURL string, metrics map[string]float
 
 func Start(cfg *Config) {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
-	pollInterval := time.Duration(cfg.PollInterval * float64(time.Second))
-	reportInterval := time.Duration(cfg.ReportInterval * float64(time.Second))
+	pollInterval := time.Duration(cfg.PollInterval * uint64(time.Second))
+	reportInterval := time.Duration(cfg.ReportInterval * uint64(time.Second))
 
 	metrics := make(map[string]float64)
 	lastReportTime := time.Now() // Время последней отправки метрик

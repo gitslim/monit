@@ -1,7 +1,9 @@
 package server
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 
 	"github.com/caarlos0/env/v6"
 )
@@ -30,7 +32,16 @@ func ParseConfig() (*Config, error) {
 
 	err := env.Parse(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
+	}
+
+	// проверка конфига
+	if cfg.Addr == "" {
+		return nil, errors.New("адрес сервера не может быть пустым")
+	}
+
+	if cfg.FileStoragePath == "" {
+		return nil, errors.New("путь до файла сохранения данных не может быть пустым")
 	}
 
 	return cfg, nil
