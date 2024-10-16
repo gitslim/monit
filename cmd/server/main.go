@@ -1,16 +1,25 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
+
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server"
 	"github.com/gitslim/monit/internal/services"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Инициализация логгера
 	log, err := logging.NewLogger()
 	if err != nil {
-		panic("Failed init logger")
+		// Логгер еще недоступен поэтому fmt...
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Парсинг конфига
@@ -22,10 +31,17 @@ func main() {
 	log.Debugf("Server config: %+v", cfg)
 
 	// Инициализация хранилища
-	metricConf, err := services.WithMemStorage(log, cfg.StoreInterval, cfg.FileStoragePath, cfg.Restore)
+	backupErrChan := make(chan error)
+	metricConf, err := services.WithMemStorage(ctx, log, cfg.StoreInterval, cfg.FileStoragePath, cfg.Restore, backupErrChan)
 	if err != nil {
 		log.Fatalf("Metric service configuration failed: %v", err)
 	}
+
+	// обработка ошибки бэкапа
+	go func() {
+		<-backupErrChan
+		cancel()
+	}()
 
 	// Инициализация сервиса метрик
 	metricService, err := services.NewMetricService(metricConf)
@@ -34,5 +50,5 @@ func main() {
 	}
 
 	// Запуск сервера
-	server.Start(cfg.Addr, log, metricService)
+	server.Start(ctx, cfg.Addr, log, metricService)
 }

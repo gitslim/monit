@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -16,10 +17,10 @@ import (
 func TestUpdateMetrics(t *testing.T) {
 	log, err := logging.NewLogger()
 	if err != nil {
-		panic("Failed init logger")
+		log.Fatal("Failed init logger")
 	}
 
-	conf, err := services.WithMemStorage(log, 0, "/tmp/.monit/memstorage.json", false)
+	conf, err := services.WithMemStorage(context.Background(), log, 0, "/tmp/.monit/memstorage.json", false, make(chan<- error))
 	assert.NoError(t, err)
 
 	metricService, err := services.NewMetricService(conf)

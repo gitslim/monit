@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/logging"
 )
 
 type MemStorage struct {
@@ -166,17 +168,23 @@ func (s *MemStorage) SaveToFile(fd *os.File) error {
 }
 
 // StartPeriodicBackup - запускает периодическое сохранение данных на диск
-func (s *MemStorage) StartPeriodicBackup(fd *os.File, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logger, fd *os.File, interval time.Duration, errChan chan<- error) {
+	defer fd.Close()
 
-	for range ticker.C {
-		if err := s.SaveToFile(fd); err != nil {
-			panic(err)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug("MemStorage backup stopped")
+			return
+		case <-time.After(interval):
+			if err := s.SaveToFile(fd); err != nil {
+				log.Errorf("MemStorage backup error: %v", err)
+				errChan <- err
+				return
+			}
+			log.Debug("MemStorage backup success")
 		}
 	}
-
-	defer fd.Close()
 }
 
 // CreateBackupFile создает файл для записи бэкапа

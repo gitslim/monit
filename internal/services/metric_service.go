@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -40,7 +41,7 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage(log *logging.Logger, storeInterval uint64, fileStoragePath string, restore bool) (MetricServiceConf, error) {
+func WithMemStorage(ctx context.Context, log *logging.Logger, storeInterval uint64, fileStoragePath string, restore bool, backupErrChan chan<- error) (MetricServiceConf, error) {
 	syncBackup := storeInterval == 0
 
 	fd, err := storage.CreateBackupFile(fileStoragePath)
@@ -58,7 +59,7 @@ func WithMemStorage(log *logging.Logger, storeInterval uint64, fileStoragePath s
 	}
 
 	if storeInterval > 0 {
-		go stor.StartPeriodicBackup(fd, time.Duration(storeInterval)*time.Second)
+		go stor.StartPeriodicBackup(ctx, log, fd, time.Duration(storeInterval)*time.Second, backupErrChan)
 	}
 	return WithStorage(stor), nil
 }
