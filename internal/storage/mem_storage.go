@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,10 +16,10 @@ import (
 )
 
 type MemStorage struct {
-	mu         sync.RWMutex
-	metrics    map[string]entities.Metric
-	syncBackup bool
-	backupFd   *os.File
+	mu           sync.RWMutex
+	metrics      map[string]entities.Metric
+	shouldBackup bool
+	backupWriter io.Writer
 }
 
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
@@ -66,11 +67,11 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewMemStorage(syncBackup bool, fd *os.File) *MemStorage {
+func NewMemStorage(shouldBackup bool, backupWriter io.Writer) *MemStorage {
 	return &MemStorage{
-		metrics:    make(map[string]entities.Metric),
-		syncBackup: syncBackup,
-		backupFd:   fd,
+		metrics:      make(map[string]entities.Metric),
+		shouldBackup: shouldBackup,
+		backupWriter: backupWriter,
 	}
 }
 
@@ -98,8 +99,8 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 	}
 
 	s.metrics[mName] = m
-	if s.syncBackup {
-		if err := s.SaveToFile(s.backupFd); err != nil {
+	if s.shouldBackup {
+		if err := s.WriteBackup(s.backupWriter); err != nil {
 			return err
 		}
 	}
@@ -144,26 +145,25 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 	return nil
 }
 
-// SaveToFile - сохраняет данные хранилища в файл
-func (s *MemStorage) SaveToFile(fd *os.File) error {
-	// s.mu.RLock()
-	// defer s.mu.RUnlock()
-
+// WriteBackup - сохраняет данные хранилища в файл
+func (s *MemStorage) WriteBackup(w io.Writer) error {
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
 	}
 
-	// очищаем файл
-	if err := fd.Truncate(0); err != nil {
-		return err
-	}
+	if file, ok := w.(*os.File); ok {
+		// очищаем файл
+		if err := file.Truncate(0); err != nil {
+			return err
+		}
 
-	// переходим в начало
-	if _, err := fd.Seek(0, 0); err != nil {
-		return err
+		// переходим в начало
+		if _, err := file.Seek(0, 0); err != nil {
+			return err
+		}
 	}
-	_, err = fd.Write(data)
+	_, err = w.Write(data)
 	return err
 }
 
@@ -177,7 +177,7 @@ func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logge
 			log.Debug("MemStorage backup stopped")
 			return
 		case <-time.After(interval):
-			if err := s.SaveToFile(fd); err != nil {
+			if err := s.WriteBackup(fd); err != nil {
 				log.Errorf("MemStorage backup error: %v", err)
 				errChan <- err
 				return

@@ -41,16 +41,16 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage(ctx context.Context, log *logging.Logger, storeInterval uint64, fileStoragePath string, restore bool, backupErrChan chan<- error) (MetricServiceConf, error) {
-	syncBackup := storeInterval == 0
+func WithMemStorage(ctx context.Context, log *logging.Logger, backupInterval uint64, fileStoragePath string, shouldRestore bool, backupErrChan chan<- error) (MetricServiceConf, error) {
+	shouldBackup := backupInterval == 0
 
-	fd, err := storage.CreateBackupFile(fileStoragePath)
+	file, err := storage.CreateBackupFile(fileStoragePath)
 	if err != nil {
 		return nil, err
 	}
 
-	stor := storage.NewMemStorage(syncBackup, fd)
-	if restore {
+	stor := storage.NewMemStorage(shouldBackup, file)
+	if shouldRestore {
 		// Загружаем данные при запуске
 		err := stor.LoadFromFile(fileStoragePath)
 		if err != nil {
@@ -58,8 +58,8 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, storeInterval uint
 		}
 	}
 
-	if storeInterval > 0 {
-		go stor.StartPeriodicBackup(ctx, log, fd, time.Duration(storeInterval)*time.Second, backupErrChan)
+	if backupInterval > 0 {
+		go stor.StartPeriodicBackup(ctx, log, file, time.Duration(backupInterval)*time.Second, backupErrChan)
 	}
 	return WithStorage(stor), nil
 }
