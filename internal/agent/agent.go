@@ -61,10 +61,11 @@ func gatherRuntimeMetrics() map[string]float64 {
 func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
-	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	gzWriter, err := gzip.NewWriterLevel(&buf, level)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
 	}
+	defer gzWriter.Close()
 
 	_, err = gzWriter.Write(data)
 	if err != nil {
