@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,21 +31,21 @@ func TestSendMetricTableDriven(t *testing.T) {
 		name        string
 		metricType  string
 		metricName  string
-		value       string
+		value       any
 		expectedErr bool
 	}{
 		{
 			name:        "Valid gauge metric",
 			metricType:  "gauge",
 			metricName:  "test_metric",
-			value:       "123.45",
+			value:       float64(123.45),
 			expectedErr: false,
 		},
 		{
 			name:        "Valid counter metric",
 			metricType:  "counter",
 			metricName:  "test_counter",
-			value:       "10",
+			value:       int64(10),
 			expectedErr: false,
 		},
 		{
@@ -58,15 +59,18 @@ func TestSendMetricTableDriven(t *testing.T) {
 			name:        "Invalid metric type",
 			metricType:  "invalid_type",
 			metricName:  "test_metric",
-			value:       "123.45",
+			value:       float64(123.45),
 			expectedErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := sendMetric(client, server.URL, tt.metricType, tt.metricName, tt.value)
-
+			dto, err := entities.NewMetricDTO(tt.metricName, tt.metricType, tt.value)
+			if (err != nil) != tt.expectedErr {
+				t.Errorf("sendMetric() error = %v, expectedErr %v", err, tt.expectedErr)
+			}
+			err = sendMetric(client, server.URL, dto)
 			if (err != nil) != tt.expectedErr {
 				t.Errorf("sendMetric() error = %v, expectedErr %v", err, tt.expectedErr)
 			}

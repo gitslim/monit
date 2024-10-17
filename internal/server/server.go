@@ -34,6 +34,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 	// роуты
 	r.GET("/", metricHandler.ListMetrics)
 	r.POST("/update/", metricHandler.UpdateMetric)
+	r.POST("/updates/", metricHandler.BatchUpdateMetrics)
 	r.POST("/value/", metricHandler.GetMetric)
 	r.GET("/value/:type/:name", metricHandler.GetMetric)
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
