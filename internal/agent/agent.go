@@ -12,8 +12,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/httpconst"
 )
 
 // Функция для сбора метрик из пакета runtime
@@ -60,10 +62,11 @@ func gatherRuntimeMetrics() map[string]float64 {
 func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
-	gzWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	gzWriter, err := gzip.NewWriterLevel(&buf, level)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
 	}
+	defer gzWriter.Close()
 
 	_, err = gzWriter.Write(data)
 	if err != nil {
@@ -100,8 +103,8 @@ func sendMetric(client *http.Client, serverURL string, mType, mName, mValue stri
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+	req.Header.Set(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -147,10 +150,10 @@ func sendMetrics(client *http.Client, serverURL string, metrics map[string]float
 	}
 }
 
-func Start(cfg *Config) {
+func Start(cfg *conf.Config) {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
-	pollInterval := time.Duration(cfg.PollInterval * float64(time.Second))
-	reportInterval := time.Duration(cfg.ReportInterval * float64(time.Second))
+	pollInterval := time.Duration(cfg.PollInterval * uint64(time.Second))
+	reportInterval := time.Duration(cfg.ReportInterval * uint64(time.Second))
 
 	metrics := make(map[string]float64)
 	lastReportTime := time.Now() // Время последней отправки метрик
