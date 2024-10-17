@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -26,6 +27,7 @@ func isJSONRequest(c *gin.Context) bool {
 }
 
 func writeError(c *gin.Context, err error) {
+	fmt.Printf("GetMetric error: %v\n", err)
 	var e *errs.Error
 	if errors.As(err, &e) {
 		if isJSONRequest(c) {

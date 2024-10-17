@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -43,6 +44,7 @@ func GzipMiddleware() gin.HandlerFunc {
 		if isRequestCompressed(c) {
 			gzReader, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
+				fmt.Printf("Gzreader error: %v\n", err)
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
