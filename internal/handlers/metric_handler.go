@@ -76,7 +76,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 		return
 	}
 	if isJSONRequest(c) {
-		m, err := h.metricService.GetMetric(mName)
+		m, err := h.metricService.GetMetric(mName, mType)
 		if err != nil {
 			writeError(c, err)
 			return
@@ -94,7 +94,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 
 // Получение метрики
 func (h *MetricHandler) GetMetric(c *gin.Context) {
-	var mName string
+	var mName, mType string
 
 	if isJSONRequest(c) {
 		var dto *entities.MetricDTO
@@ -106,12 +106,14 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 		}
 
 		mName = dto.ID
+		mType = dto.MType
 
 	} else {
 		mName = c.Param("name")
+		mType = c.Param("type")
 	}
 
-	m, err := h.metricService.GetMetric(mName)
+	m, err := h.metricService.GetMetric(mName, mType)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -137,4 +139,12 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "metrics.html", res)
+}
+
+func (h *MetricHandler) PingStorage(c *gin.Context) {
+	if err := h.metricService.PingStorage(); err != nil {
+		c.String(http.StatusInternalServerError, "error")
+	} else {
+		c.String(http.StatusOK, "ok")
+	}
 }

@@ -14,19 +14,7 @@ import (
 	"github.com/gitslim/monit/internal/middleware"
 	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
-	"github.com/gitslim/monit/internal/storage/db"
 )
-
-func MakePingDBHandler(ctx context.Context, log *logging.Logger, cfg *conf.Config) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		_, err := db.Connect(ctx, log, cfg.DatabaseDSN)
-		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-		} else {
-			c.String(http.StatusOK, "ok")
-		}
-	}
-}
 
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
 	// роутер
@@ -49,7 +37,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 	r.POST("/value/", metricHandler.GetMetric)
 	r.GET("/value/:type/:name", metricHandler.GetMetric)
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
-	r.GET("/ping", MakePingDBHandler(ctx, log, cfg))
+	r.GET("/ping", metricHandler.PingStorage)
 
 	// сервер
 	srv := &http.Server{

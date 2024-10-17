@@ -65,8 +65,21 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, 
 	return WithStorage(stor), nil
 }
 
-func (s *MetricService) GetMetric(name string) (entities.Metric, error) {
-	val, err := s.storage.GetMetric(name)
+// WithMemStorage конфигурирует MetricService c MemStorage
+func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (MetricServiceConf, error) {
+	pool, err := storage.CreateConnPoll(cfg.DatabaseDSN)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.CreatePGSchema(ctx, pool); err != nil {
+		return nil, err
+	}
+	stor := storage.NewPGStorage(pool)
+	return WithStorage(stor), nil
+}
+
+func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, error) {
+	val, err := s.storage.GetMetric(mName, mType)
 	if err != nil {
 		return nil, err
 	}
@@ -107,4 +120,8 @@ func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 
 func (s *MetricService) GetAllMetrics() map[string]entities.Metric {
 	return s.storage.GetAllMetrics()
+}
+
+func (s *MetricService) PingStorage() error {
+	return s.storage.Ping()
 }

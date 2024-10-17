@@ -82,7 +82,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 
 	var m entities.Metric
 
-	metric, err := s.GetMetric(mName)
+	metric, err := s.GetMetric(mName, mType.String())
 	if err != nil {
 		switch mType {
 		case entities.Gauge:
@@ -108,7 +108,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 }
 
 // GetMetric получает метрику по имени
-func (s *MemStorage) GetMetric(mName string) (entities.Metric, error) {
+func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
 	if metric, exists := s.metrics[mName]; exists {
 		return metric, nil
 	}
@@ -202,4 +202,8 @@ func CreateBackupFile(filePath string) (*os.File, error) {
 	}
 
 	return fd, nil
+}
+
+func (s *MemStorage) Ping() error {
+	return nil
 }

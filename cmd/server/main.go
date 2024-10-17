@@ -32,17 +32,27 @@ func main() {
 	log.Debugf("Server config: %+v", cfg)
 
 	// Инициализация хранилища
-	backupErrChan := make(chan error)
-	metricConf, err := services.WithMemStorage(ctx, log, cfg, backupErrChan)
-	if err != nil {
-		log.Fatalf("Metric service configuration failed: %v", err)
-	}
+	var metricConf services.MetricServiceConf
+	if cfg.DatabaseDSN != "" {
+		log.Debug("Using postgres storage")
+		metricConf, err = services.WithPGStorage(ctx, log, cfg)
+		if err != nil {
+			log.Fatalf("Postgres storage configuration failed: %v", err)
+		}
+	} else {
+		log.Debug("Using memory storage")
+		backupErrChan := make(chan error)
+		metricConf, err = services.WithMemStorage(ctx, log, cfg, backupErrChan)
+		if err != nil {
+			log.Fatalf("Memory storage configuration failed: %v", err)
+		}
 
-	// обработка ошибки бэкапа
-	go func() {
-		<-backupErrChan
-		cancel()
-	}()
+		// обработка ошибки бэкапа
+		go func() {
+			<-backupErrChan
+			cancel()
+		}()
+	}
 
 	// Инициализация сервиса метрик
 	metricService, err := services.NewMetricService(metricConf)
