@@ -14,6 +14,7 @@ import (
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
+	"github.com/gitslim/monit/internal/retry"
 )
 
 // Функция для сбора метрик из пакета runtime
@@ -119,34 +120,36 @@ func sendJSON(client *http.Client, url string, jsonData []byte) error {
 
 // Функция для отправки всех метрик на сервер
 func sendMetrics(client *http.Client, serverURL string, metrics []*entities.MetricDTO, batch bool) error {
-	var url string
-	var jsonData []byte
-	var err error
+	return retry.Retry(func() error {
+		var url string
+		var jsonData []byte
+		var err error
 
-	if batch {
-		// Отправляем батч метрик
-		url = fmt.Sprintf("%s/updates/", serverURL)
-		jsonData, err = json.Marshal(metrics)
-		if err != nil {
-			return fmt.Errorf("failed to marshal metric batch")
-		}
-		return sendJSON(client, url, jsonData)
-	} else {
-		// Отправляем метрики по одной
-		url = fmt.Sprintf("%s/update/", serverURL)
+		if batch {
+			// Отправляем батч метрик
+			url = fmt.Sprintf("%s/updates/", serverURL)
+			jsonData, err = json.Marshal(metrics)
+			if err != nil {
+				return fmt.Errorf("failed to marshal metric batch")
+			}
+			return sendJSON(client, url, jsonData)
+		} else {
+			// Отправляем метрики по одной
+			url = fmt.Sprintf("%s/update/", serverURL)
 
-		for _, metric := range metrics {
-			jsonData, err = json.Marshal(&metric)
-			if err != nil {
-				return fmt.Errorf("failed to marshal metric")
+			for _, metric := range metrics {
+				jsonData, err = json.Marshal(&metric)
+				if err != nil {
+					return fmt.Errorf("failed to marshal metric")
+				}
+				err := sendJSON(client, url, jsonData)
+				if err != nil {
+					return fmt.Errorf("failed to send metric")
+				}
 			}
-			err := sendJSON(client, url, jsonData)
-			if err != nil {
-				return fmt.Errorf("failed to send metric")
-			}
+			return nil
 		}
-		return nil
-	}
+	}, 3)
 }
 
 func Start(cfg *conf.Config) {

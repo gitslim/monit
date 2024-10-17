@@ -9,6 +9,7 @@ import (
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/retry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -72,46 +73,48 @@ func NewPGStorage(pool *pgxpool.Pool) *PGStorage {
 
 // UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее (Upsert)
 func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.MetricType, value interface{}) error {
-	ctx := context.Background()
+	return retry.Retry(func() error {
+		ctx := context.Background()
 
-	var query string
-	switch metricType {
-	case entities.Gauge:
-		v, ok := value.(float64)
-		if !ok {
-			return errs.ErrInvalidMetricValue
-		}
-		query = `
+		var query string
+		switch metricType {
+		case entities.Gauge:
+			v, ok := value.(float64)
+			if !ok {
+				return errs.ErrInvalidMetricValue
+			}
+			query = `
 INSERT INTO metrics (name, type, value)
 VALUES ($1, $2, $3)
 ON CONFLICT (name, type)
 DO UPDATE SET value = EXCLUDED.value`
-		_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
-		if err != nil {
-			return errs.ErrInternal
-		}
+			_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
+			if err != nil {
+				return errs.ErrInternal
+			}
 
-	case entities.Counter:
-		v, ok := value.(int64)
-		if !ok {
-			return errs.ErrInvalidMetricValue
-		}
-		query = `
+		case entities.Counter:
+			v, ok := value.(int64)
+			if !ok {
+				return errs.ErrInvalidMetricValue
+			}
+			query = `
 INSERT INTO metrics (name, type, counter)
 VALUES ($1, $2, $3)
 ON CONFLICT (name, type)
 DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
-		_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
-		if err != nil {
-			//			fmt.Printf("db error: %v", err)
-			return errs.ErrInternal
+			_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
+			if err != nil {
+				//			fmt.Printf("db error: %v", err)
+				return errs.ErrInternal
+			}
+
+		default:
+			return errs.ErrInvalidMetricType
 		}
 
-	default:
-		return errs.ErrInvalidMetricType
-	}
-
-	return nil
+		return nil
+	}, 3)
 }
 
 // GetMetric получает метрику по имени
@@ -261,59 +264,61 @@ func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 }
 
 func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
-	ctx := context.TODO()
+	return retry.Retry(func() error {
+		ctx := context.TODO()
 
-	// Начинаем транзакцию
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	// В случае ошибки откатываем транзакцию
-	defer func() {
+		// Начинаем транзакцию
+		tx, err := s.db.Begin(ctx)
 		if err != nil {
-			_ = tx.Rollback(ctx)
+			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
-	}()
+		// В случае ошибки откатываем транзакцию
+		defer func() {
+			if err != nil {
+				_ = tx.Rollback(ctx)
+			}
+		}()
 
-	for _, dto := range metrics {
-		var query string
-		mType, err := entities.GetMetricType(dto.MType)
-		if err != nil {
-			fmt.Printf("Bad metric type: %v\n", err)
-		}
-		switch mType {
-		case entities.Gauge:
-			query = `
+		for _, dto := range metrics {
+			var query string
+			mType, err := entities.GetMetricType(dto.MType)
+			if err != nil {
+				fmt.Printf("Bad metric type: %v\n", err)
+			}
+			switch mType {
+			case entities.Gauge:
+				query = `
 INSERT INTO metrics (name, type, value)
 VALUES ($1, $2, $3)
 ON CONFLICT (name, type)
 DO UPDATE SET value = EXCLUDED.value`
-			_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Value)
-			if err != nil {
-				return errs.ErrInternal
-			}
+				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Value)
+				if err != nil {
+					return errs.ErrInternal
+				}
 
-		case entities.Counter:
-			query = `
+			case entities.Counter:
+				query = `
 INSERT INTO metrics (name, type, counter)
 VALUES ($1, $2, $3)
 ON CONFLICT (name, type)
 DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
-			_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Delta)
-			if err != nil {
-				return errs.ErrInternal
+				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Delta)
+				if err != nil {
+					return errs.ErrInternal
+				}
+
+			default:
+				return errs.ErrInvalidMetricType
 			}
 
-		default:
-			return errs.ErrInvalidMetricType
+		}
+		// Коммитим транзакцию при успешном завершении
+		err = tx.Commit(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
 
-	}
-	// Коммитим транзакцию при успешном завершении
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
+		return nil
+	}, 3)
 }
