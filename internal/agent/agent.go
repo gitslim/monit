@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
 	"github.com/gitslim/monit/internal/httpconst"
@@ -149,7 +150,7 @@ func sendMetrics(client *http.Client, serverURL string, metrics map[string]float
 	}
 }
 
-func Start(cfg *Config) {
+func Start(cfg *conf.Config) {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
 	pollInterval := time.Duration(cfg.PollInterval * uint64(time.Second))
 	reportInterval := time.Duration(cfg.ReportInterval * uint64(time.Second))

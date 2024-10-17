@@ -7,6 +7,7 @@ import (
 
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 )
 
@@ -23,7 +24,7 @@ func main() {
 	}
 
 	// Парсинг конфига
-	cfg, err := server.ParseConfig()
+	cfg, err := conf.ParseConfig()
 	if err != nil {
 		log.Fatalf("Config parse failed: %v", err)
 	}
@@ -32,7 +33,7 @@ func main() {
 
 	// Инициализация хранилища
 	backupErrChan := make(chan error)
-	metricConf, err := services.WithMemStorage(ctx, log, cfg.StoreInterval, cfg.FileStoragePath, cfg.Restore, backupErrChan)
+	metricConf, err := services.WithMemStorage(ctx, log, cfg, backupErrChan)
 	if err != nil {
 		log.Fatalf("Metric service configuration failed: %v", err)
 	}
@@ -50,5 +51,5 @@ func main() {
 	}
 
 	// Запуск сервера
-	server.Start(ctx, cfg.Addr, log, metricService)
+	server.Start(ctx, cfg, log, metricService)
 }

@@ -16,10 +16,10 @@ import (
 )
 
 type MemStorage struct {
-	mu           sync.RWMutex
-	metrics      map[string]entities.Metric
-	shouldBackup bool
-	backupWriter io.Writer
+	mu               sync.RWMutex
+	metrics          map[string]entities.Metric
+	shouldBackupSync bool
+	backupWriter     io.Writer
 }
 
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
@@ -67,11 +67,11 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewMemStorage(shouldBackup bool, backupWriter io.Writer) *MemStorage {
+func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 	return &MemStorage{
-		metrics:      make(map[string]entities.Metric),
-		shouldBackup: shouldBackup,
-		backupWriter: backupWriter,
+		metrics:          make(map[string]entities.Metric),
+		shouldBackupSync: shouldBackupSync,
+		backupWriter:     backupWriter,
 	}
 }
 
@@ -99,7 +99,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 	}
 
 	s.metrics[mName] = m
-	if s.shouldBackup {
+	if s.shouldBackupSync {
 		if err := s.WriteBackup(s.backupWriter); err != nil {
 			return err
 		}

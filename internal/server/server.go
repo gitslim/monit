@@ -12,10 +12,11 @@ import (
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/middleware"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 )
 
-func Start(ctx context.Context, addr string, log *logging.Logger, metricService *services.MetricService) {
+func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
 	// роутер
 	r := gin.New()
 
@@ -39,7 +40,7 @@ func Start(ctx context.Context, addr string, log *logging.Logger, metricService 
 
 	// сервер
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    cfg.Addr,
 		Handler: r,
 	}
 
@@ -50,7 +51,7 @@ func Start(ctx context.Context, addr string, log *logging.Logger, metricService 
 		}
 	}()
 
-	log.Infof("Server is running on %v\n", addr)
+	log.Infof("Server is running on %v\n", cfg.Addr)
 
 	// Gracefull shutdown
 	// таймаут ожидания завершения

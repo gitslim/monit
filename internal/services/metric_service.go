@@ -8,6 +8,7 @@ import (
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
 	"github.com/gitslim/monit/internal/logging"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/storage"
 )
 
@@ -41,25 +42,25 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage(ctx context.Context, log *logging.Logger, backupInterval uint64, fileStoragePath string, shouldRestore bool, backupErrChan chan<- error) (MetricServiceConf, error) {
-	shouldBackup := backupInterval == 0
+func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, backupErrChan chan<- error) (MetricServiceConf, error) {
+	shouldBackupSync := cfg.StoreInterval == 0
 
-	file, err := storage.CreateBackupFile(fileStoragePath)
+	file, err := storage.CreateBackupFile(cfg.FileStoragePath)
 	if err != nil {
 		return nil, err
 	}
 
-	stor := storage.NewMemStorage(shouldBackup, file)
-	if shouldRestore {
+	stor := storage.NewMemStorage(shouldBackupSync, file)
+	if cfg.Restore {
 		// Загружаем данные при запуске
-		err := stor.LoadFromFile(fileStoragePath)
+		err := stor.LoadFromFile(cfg.FileStoragePath)
 		if err != nil {
 			log.Debugf("Failed to load metrics from file: %v", err)
 		}
 	}
 
-	if backupInterval > 0 {
-		go stor.StartPeriodicBackup(ctx, log, file, time.Duration(backupInterval)*time.Second, backupErrChan)
+	if cfg.StoreInterval > 0 {
+		go stor.StartPeriodicBackup(ctx, log, file, time.Duration(cfg.StoreInterval)*time.Second, backupErrChan)
 	}
 	return WithStorage(stor), nil
 }
