@@ -84,6 +84,13 @@ func NewGaugeMetric(name string) *GaugeMetric {
 	return &GaugeMetric{Name: name}
 }
 
+func NewGaugeMetricFromDTO(dto *MetricDTO) *GaugeMetric {
+	return &GaugeMetric{
+		Name:  dto.ID,
+		Value: *dto.Value,
+	}
+}
+
 func (g *GaugeMetric) GetName() string {
 	return g.Name
 }
@@ -146,6 +153,13 @@ func (c *CounterMetric) UnmarshalJSON(data []byte) error {
 
 func NewCounterMetric(name string) *CounterMetric {
 	return &CounterMetric{Name: name}
+}
+
+func NewCounterMetricFromDTO(dto *MetricDTO) *CounterMetric {
+	return &CounterMetric{
+		Name:  dto.ID,
+		Value: *dto.Delta,
+	}
 }
 
 func (c *CounterMetric) GetName() string {

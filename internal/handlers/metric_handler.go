@@ -3,12 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/services"
 )
 
@@ -21,10 +23,11 @@ func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 }
 
 func isJSONRequest(c *gin.Context) bool {
-	return c.GetHeader("Content-type") == "application/json"
+	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
 func writeError(c *gin.Context, err error) {
+	fmt.Printf("GetMetric error: %v\n", err)
 	var e *errs.Error
 	if errors.As(err, &e) {
 		if isJSONRequest(c) {
@@ -42,7 +45,7 @@ func writeError(c *gin.Context, err error) {
 	}
 }
 
-// Обновление метрики
+// UpdateMetric обновляет метрику
 func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
 
@@ -75,12 +78,12 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 		return
 	}
 	if isJSONRequest(c) {
-		m, err := h.metricService.GetMetric(mName)
+		m, err := h.metricService.GetMetric(mName, mType)
 		if err != nil {
 			writeError(c, err)
 			return
 		}
-		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetStringValue())
+		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetValue())
 		if err != nil {
 			writeError(c, err)
 			return
@@ -91,9 +94,27 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	}
 }
 
+// BatchUpdateMetrics обновляет метрики батчами
+func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
+	var metrics []*entities.MetricDTO
+
+	err := json.NewDecoder(c.Request.Body).Decode(&metrics)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+
+	if err := h.metricService.BatchUpdateMetrics(metrics); err != nil {
+		writeError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, metrics)
+}
+
 // Получение метрики
 func (h *MetricHandler) GetMetric(c *gin.Context) {
-	var mName string
+	var mName, mType string
 
 	if isJSONRequest(c) {
 		var dto *entities.MetricDTO
@@ -105,19 +126,21 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 		}
 
 		mName = dto.ID
+		mType = dto.MType
 
 	} else {
 		mName = c.Param("name")
+		mType = c.Param("type")
 	}
 
-	m, err := h.metricService.GetMetric(mName)
+	m, err := h.metricService.GetMetric(mName, mType)
 	if err != nil {
 		writeError(c, err)
 		return
 	}
 
 	if isJSONRequest(c) {
-		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetStringValue())
+		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetValue())
 		if err != nil {
 			writeError(c, err)
 			return
@@ -136,4 +159,12 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "metrics.html", res)
+}
+
+func (h *MetricHandler) PingStorage(c *gin.Context) {
+	if err := h.metricService.PingStorage(); err != nil {
+		c.String(http.StatusInternalServerError, "error")
+	} else {
+		c.String(http.StatusOK, "ok")
+	}
 }
