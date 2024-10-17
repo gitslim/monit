@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/logging"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,8 +20,13 @@ func TestUpdateMetrics(t *testing.T) {
 	if err != nil {
 		log.Fatal("Failed init logger")
 	}
+	cfg := &conf.Config{
+		StoreInterval:   0,
+		FileStoragePath: "/tmp/.monit/memstorage.json",
+		Restore:         false,
+	}
 
-	conf, err := services.WithMemStorage(context.Background(), log, 0, "/tmp/.monit/memstorage.json", false, make(chan<- error))
+	conf, err := services.WithMemStorage(context.Background(), log, cfg, make(chan<- error))
 	assert.NoError(t, err)
 
 	metricService, err := services.NewMetricService(conf)
