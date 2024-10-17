@@ -130,7 +130,7 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 		err := s.db.QueryRow(ctx, query, mName, mType).Scan(&value)
 		if err != nil {
 			fmt.Printf("Ошибка выполнения запроса: %v", err)
-			return nil, errs.ErrInternal
+			return nil, errs.ErrMetricNotFound
 		}
 		return &entities.GaugeMetric{
 			Name:  mName,
@@ -143,7 +143,7 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 		err := s.db.QueryRow(ctx, query, mName, mType).Scan(&counter)
 		if err != nil {
 			fmt.Printf("Ошибка выполнения запроса: %v", err)
-			return nil, errs.ErrInternal
+			return nil, errs.ErrMetricNotFound
 		}
 		return &entities.CounterMetric{
 			Name:  mName,
@@ -257,5 +257,63 @@ func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("ошибка создания таблицы metrics: %w", err)
 	}
+	return nil
+}
+
+func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
+	ctx := context.TODO()
+
+	// Начинаем транзакцию
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	// В случае ошибки откатываем транзакцию
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	for _, dto := range metrics {
+		var query string
+		mType, err := entities.GetMetricType(dto.MType)
+		if err != nil {
+			fmt.Printf("Bad metric type: %v\n", err)
+		}
+		switch mType {
+		case entities.Gauge:
+			query = `
+INSERT INTO metrics (name, type, value)
+VALUES ($1, $2, $3)
+ON CONFLICT (name, type)
+DO UPDATE SET value = EXCLUDED.value`
+			_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Value)
+			if err != nil {
+				return errs.ErrInternal
+			}
+
+		case entities.Counter:
+			query = `
+INSERT INTO metrics (name, type, counter)
+VALUES ($1, $2, $3)
+ON CONFLICT (name, type)
+DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
+			_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Delta)
+			if err != nil {
+				return errs.ErrInternal
+			}
+
+		default:
+			return errs.ErrInvalidMetricType
+		}
+
+	}
+	// Коммитим транзакцию при успешном завершении
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return nil
 }

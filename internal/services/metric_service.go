@@ -118,6 +118,10 @@ func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	return s.storage.UpdateOrCreateMetric(mName, t, v)
 }
 
+func (s *MetricService) BatchUpdateMetrics(metrics []*entities.MetricDTO) error {
+	return s.storage.BatchUpdateOrCreateMetrics(metrics)
+}
+
 func (s *MetricService) GetAllMetrics() map[string]entities.Metric {
 	return s.storage.GetAllMetrics()
 }

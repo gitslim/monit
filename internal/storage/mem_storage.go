@@ -207,3 +207,33 @@ func CreateBackupFile(filePath string) (*os.File, error) {
 func (s *MemStorage) Ping() error {
 	return nil
 }
+
+func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, dto := range metrics {
+
+		var m entities.Metric
+
+		mType, err := entities.GetMetricType(dto.MType)
+		if err != nil {
+			fmt.Printf("Unknown metric type: %v\n", err)
+		}
+		switch mType {
+		case entities.Gauge:
+			m = entities.NewGaugeMetricFromDTO(dto)
+		case entities.Counter:
+			m = entities.NewCounterMetricFromDTO(dto)
+		}
+
+		s.metrics[m.GetName()] = m
+
+		if s.shouldBackupSync {
+			if err := s.WriteBackup(s.backupWriter); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

@@ -75,3 +75,11 @@ func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 	}
 	return mDto, nil
 }
+
+// func (dto *MetricDTO) getValue() (float64, error) {
+// 	value, err := strconv.ParseFloat(dto.Value, 64)
+// 	if err != nil {
+// 		return nil, errs.ErrInvalidMetricValue
+// 	}
+// 	return value, nil
+// }

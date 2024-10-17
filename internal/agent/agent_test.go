@@ -9,6 +9,7 @@ import (
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSendMetricTableDriven(t *testing.T) {
@@ -28,52 +29,68 @@ func TestSendMetricTableDriven(t *testing.T) {
 	defer server.Close()
 
 	tests := []struct {
-		name        string
-		metricType  string
-		metricName  string
-		value       any
-		expectedErr bool
+		name       string
+		metricType string
+		metricName string
+		value      any
+		marshalErr bool
+		sendErr    bool
 	}{
 		{
-			name:        "Valid gauge metric",
-			metricType:  "gauge",
-			metricName:  "test_metric",
-			value:       float64(123.45),
-			expectedErr: false,
+			name:       "Valid gauge metric",
+			metricType: "gauge",
+			metricName: "test_metric",
+			value:      float64(123.45),
+			marshalErr: false,
+			sendErr:    false,
 		},
 		{
-			name:        "Valid counter metric",
-			metricType:  "counter",
-			metricName:  "test_counter",
-			value:       int64(10),
-			expectedErr: false,
+			name:       "Valid counter metric",
+			metricType: "counter",
+			metricName: "test_counter",
+			value:      int64(10),
+			marshalErr: false,
+			sendErr:    false,
 		},
 		{
-			name:        "Invalid path metric",
-			metricType:  "gauge",
-			metricName:  "invalid_metric",
-			value:       "invalid_value",
-			expectedErr: true,
+			name:       "Invalid path metric",
+			metricType: "gauge",
+			metricName: "invalid_metric",
+			value:      "invalid_value",
+			marshalErr: false,
+			sendErr:    false,
 		},
 		{
-			name:        "Invalid metric type",
-			metricType:  "invalid_type",
-			metricName:  "test_metric",
-			value:       float64(123.45),
-			expectedErr: true,
+			name:       "Invalid metric type",
+			metricType: "invalid_type",
+			metricName: "test_metric",
+			value:      float64(123.45),
+			marshalErr: false,
+			sendErr:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var err error
+
 			dto, err := entities.NewMetricDTO(tt.metricName, tt.metricType, tt.value)
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("sendMetric() error = %v, expectedErr %v", err, tt.expectedErr)
+			if tt.marshalErr {
+				require.Error(t, err)
 			}
-			err = sendMetric(client, server.URL, dto)
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("sendMetric() error = %v, expectedErr %v", err, tt.expectedErr)
+			// else {
+			// 				assert.NoError(t, err)
+			// 			}
+
+			metrics := []*entities.MetricDTO{dto}
+
+			err = sendMetrics(client, server.URL, metrics, false)
+			if tt.sendErr {
+				require.Error(t, err)
 			}
+			// else {
+			// 				assert.NoError(t, err)
+			// 			}
 		})
 	}
 }

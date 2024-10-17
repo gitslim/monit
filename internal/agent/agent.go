@@ -13,7 +13,6 @@ import (
 
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
-	"github.com/gitslim/monit/internal/errs"
 	"github.com/gitslim/monit/internal/httpconst"
 )
 
@@ -78,15 +77,7 @@ func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-// Функция для отправки метрики на сервер
-func sendMetric(client *http.Client, serverURL string, dto *entities.MetricDTO) error {
-	url := fmt.Sprintf("%s/update/", serverURL)
-
-	jsonData, err := json.Marshal(&dto)
-	if err != nil {
-		return errs.ErrInternal
-	}
-
+func sendJSON(client *http.Client, url string, jsonData []byte) error {
 	buf, err := compressGzip(jsonData, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to compress with gzip: %v", err)
@@ -110,22 +101,51 @@ func sendMetric(client *http.Client, serverURL string, dto *entities.MetricDTO) 
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(dto)
-	if err != nil {
-		return fmt.Errorf("json decode error")
-	}
+	// if batch {
+	// 	var v []entities.MetricDTO
+	// 	err = json.NewDecoder(resp.Body).Decode(&v)
+	// } else {
+	// 	var v entities.MetricDTO
+	// 	err = json.NewDecoder(resp.Body).Decode(&v)
+
+	// }
+
+	// if err != nil {
+	// 	return fmt.Errorf("json decode error")
+	// }
 
 	return nil
 }
 
 // Функция для отправки всех метрик на сервер
-func sendMetrics(client *http.Client, serverURL string, metrics []*entities.MetricDTO) {
-	// Отправляем метрики по одной
-	for _, metric := range metrics {
-		err := sendMetric(client, serverURL, metric)
+func sendMetrics(client *http.Client, serverURL string, metrics []*entities.MetricDTO, batch bool) error {
+	var url string
+	var jsonData []byte
+	var err error
+
+	if batch {
+		// Отправляем батч метрик
+		url = fmt.Sprintf("%s/updates/", serverURL)
+		jsonData, err = json.Marshal(metrics)
 		if err != nil {
-			log.Printf("Error sending metric: %+v\n", metric)
+			return fmt.Errorf("failed to marshal metric batch")
 		}
+		return sendJSON(client, url, jsonData)
+	} else {
+		// Отправляем метрики по одной
+		url = fmt.Sprintf("%s/update/", serverURL)
+
+		for _, metric := range metrics {
+			jsonData, err = json.Marshal(&metric)
+			if err != nil {
+				return fmt.Errorf("failed to marshal metric")
+			}
+			err := sendJSON(client, url, jsonData)
+			if err != nil {
+				return fmt.Errorf("failed to send metric")
+			}
+		}
+		return nil
 	}
 }
 
@@ -138,6 +158,7 @@ func Start(cfg *conf.Config) {
 	var pollCount int64          // Счётчик обновлений PollCount
 
 	client := &http.Client{}
+	fmt.Println("Agent started")
 
 	for {
 		var metrics []*entities.MetricDTO
@@ -158,7 +179,7 @@ func Start(cfg *conf.Config) {
 				log.Println("Failed to create counter DTO: PollCount")
 			}
 			metrics = append(metrics, dto)
-			sendMetrics(client, serverURL, metrics)
+			sendMetrics(client, serverURL, metrics, false)
 			lastReportTime = time.Now() // Обновляем время последней отправки
 		}
 
