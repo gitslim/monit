@@ -1,20 +1,30 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
+
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Инициализация логгера
 	log, err := logging.NewLogger()
 	if err != nil {
-		panic("Failed init logger")
+		// Логгер еще недоступен поэтому fmt...
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Парсинг конфига
-	cfg, err := server.ParseConfig()
+	cfg, err := conf.ParseConfig()
 	if err != nil {
 		log.Fatalf("Config parse failed: %v", err)
 	}
@@ -22,9 +32,26 @@ func main() {
 	log.Debugf("Server config: %+v", cfg)
 
 	// Инициализация хранилища
-	metricConf, err := services.WithMemStorage(log, cfg.StoreInterval, cfg.FileStoragePath, cfg.Restore)
-	if err != nil {
-		log.Fatalf("Metric service configuration failed: %v", err)
+	var metricConf services.MetricServiceConf
+	if cfg.DatabaseDSN != "" {
+		log.Debug("Using postgres storage")
+		metricConf, err = services.WithPGStorage(ctx, log, cfg)
+		if err != nil {
+			log.Fatalf("Postgres storage configuration failed: %v", err)
+		}
+	} else {
+		log.Debug("Using memory storage")
+		backupErrChan := make(chan error)
+		metricConf, err = services.WithMemStorage(ctx, log, cfg, backupErrChan)
+		if err != nil {
+			log.Fatalf("Memory storage configuration failed: %v", err)
+		}
+
+		// обработка ошибки бэкапа
+		go func() {
+			<-backupErrChan
+			cancel()
+		}()
 	}
 
 	// Инициализация сервиса метрик
@@ -34,5 +61,5 @@ func main() {
 	}
 
 	// Запуск сервера
-	server.Start(cfg.Addr, log, metricService)
+	server.Start(ctx, cfg, log, metricService)
 }

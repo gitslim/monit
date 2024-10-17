@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/services"
 )
 
@@ -21,7 +22,7 @@ func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 }
 
 func isJSONRequest(c *gin.Context) bool {
-	return c.GetHeader("Content-type") == "application/json"
+	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
 func writeError(c *gin.Context, err error) {
@@ -75,7 +76,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 		return
 	}
 	if isJSONRequest(c) {
-		m, err := h.metricService.GetMetric(mName)
+		m, err := h.metricService.GetMetric(mName, mType)
 		if err != nil {
 			writeError(c, err)
 			return
@@ -93,7 +94,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 
 // Получение метрики
 func (h *MetricHandler) GetMetric(c *gin.Context) {
-	var mName string
+	var mName, mType string
 
 	if isJSONRequest(c) {
 		var dto *entities.MetricDTO
@@ -105,12 +106,14 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 		}
 
 		mName = dto.ID
+		mType = dto.MType
 
 	} else {
 		mName = c.Param("name")
+		mType = c.Param("type")
 	}
 
-	m, err := h.metricService.GetMetric(mName)
+	m, err := h.metricService.GetMetric(mName, mType)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -136,4 +139,12 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "metrics.html", res)
+}
+
+func (h *MetricHandler) PingStorage(c *gin.Context) {
+	if err := h.metricService.PingStorage(); err != nil {
+		c.String(http.StatusInternalServerError, "error")
+	} else {
+		c.String(http.StatusOK, "ok")
+	}
 }
