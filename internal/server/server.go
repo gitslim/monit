@@ -12,13 +12,23 @@ import (
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/middleware"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
+	"github.com/gitslim/monit/internal/storage/db"
 )
 
-func Start(addr string, log *logging.Logger, metricService *services.MetricService) {
-	// таймаут ожидания завершения
-	gracefulTimeout := 5 * time.Second
+func MakePingDBHandler(ctx context.Context, log *logging.Logger, cfg *conf.Config) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		_, err := db.Connect(ctx, log, cfg.DatabaseDSN)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+		} else {
+			c.String(http.StatusOK, "ok")
+		}
+	}
+}
 
+func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
 	// роутер
 	r := gin.New()
 
@@ -39,10 +49,11 @@ func Start(addr string, log *logging.Logger, metricService *services.MetricServi
 	r.POST("/value/", metricHandler.GetMetric)
 	r.GET("/value/:type/:name", metricHandler.GetMetric)
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
+	r.GET("/ping", MakePingDBHandler(ctx, log, cfg))
 
 	// сервер
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    cfg.Addr,
 		Handler: r,
 	}
 
@@ -53,17 +64,21 @@ func Start(addr string, log *logging.Logger, metricService *services.MetricServi
 		}
 	}()
 
-	log.Infof("Server is running on %v\n", addr)
+	log.Infof("Server is running on %v\n", cfg.Addr)
+
+	// Gracefull shutdown
+	// таймаут ожидания завершения
+	gracefulTimeout := 5 * time.Second
+
+	// Создаем контекст с тайм-аутом для завершения работы сервера
+	ctx, cancel := context.WithTimeout(ctx, gracefulTimeout)
+	defer cancel()
 
 	// канал для получения сигналов
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Info("Shutting down server...")
-
-	// Создаем контекст с тайм-аутом для завершения работы сервера
-	ctx, cancel := context.WithTimeout(context.Background(), gracefulTimeout)
-	defer cancel()
 
 	// Инициируем graceful shutdown
 	if err := srv.Shutdown(ctx); err != nil {
