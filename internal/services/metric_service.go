@@ -1,12 +1,14 @@
 package services
 
 import (
+	"context"
 	"strconv"
 	"time"
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
 	"github.com/gitslim/monit/internal/logging"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/storage"
 )
 
@@ -40,31 +42,44 @@ func WithStorage(stor storage.Storage) MetricServiceConf {
 }
 
 // WithMemStorage конфигурирует MetricService c MemStorage
-func WithMemStorage(log *logging.Logger, storeInterval uint64, fileStoragePath string, restore bool) (MetricServiceConf, error) {
-	syncBackup := storeInterval == 0
+func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, backupErrChan chan<- error) (MetricServiceConf, error) {
+	shouldBackupSync := cfg.StoreInterval == 0
 
-	fd, err := storage.CreateBackupFile(fileStoragePath)
+	file, err := storage.CreateBackupFile(cfg.FileStoragePath)
 	if err != nil {
 		return nil, err
 	}
 
-	stor := storage.NewMemStorage(syncBackup, fd)
-	if restore {
+	stor := storage.NewMemStorage(shouldBackupSync, file)
+	if cfg.Restore {
 		// Загружаем данные при запуске
-		err := stor.LoadFromFile(fileStoragePath)
+		err := stor.LoadFromFile(cfg.FileStoragePath)
 		if err != nil {
 			log.Debugf("Failed to load metrics from file: %v", err)
 		}
 	}
 
-	if storeInterval > 0 {
-		go stor.StartPeriodicBackup(fd, time.Duration(storeInterval)*time.Second)
+	if cfg.StoreInterval > 0 {
+		go stor.StartPeriodicBackup(ctx, log, file, time.Duration(cfg.StoreInterval)*time.Second, backupErrChan)
 	}
 	return WithStorage(stor), nil
 }
 
-func (s *MetricService) GetMetric(name string) (entities.Metric, error) {
-	val, err := s.storage.GetMetric(name)
+// WithMemStorage конфигурирует MetricService c MemStorage
+func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (MetricServiceConf, error) {
+	pool, err := storage.CreateConnPoll(cfg.DatabaseDSN)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.CreatePGSchema(ctx, pool); err != nil {
+		return nil, err
+	}
+	stor := storage.NewPGStorage(pool)
+	return WithStorage(stor), nil
+}
+
+func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, error) {
+	val, err := s.storage.GetMetric(mName, mType)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +118,14 @@ func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	return s.storage.UpdateOrCreateMetric(mName, t, v)
 }
 
+func (s *MetricService) BatchUpdateMetrics(metrics []*entities.MetricDTO) error {
+	return s.storage.BatchUpdateOrCreateMetrics(metrics)
+}
+
 func (s *MetricService) GetAllMetrics() map[string]entities.Metric {
 	return s.storage.GetAllMetrics()
+}
+
+func (s *MetricService) PingStorage() error {
+	return s.storage.Ping()
 }

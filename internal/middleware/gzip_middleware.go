@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/httpconst"
 )
 
 type gzipResponseWriter struct {
@@ -19,12 +21,12 @@ func (w *gzipResponseWriter) Write(data []byte) (int, error) {
 }
 
 func isCompressionAcceptable(c *gin.Context) bool {
-	return strings.Contains(c.GetHeader("Accept-Encoding"), "gzip") // TODO: better check
+	return strings.Contains(c.GetHeader(httpconst.HeaderAcceptEncoding), httpconst.AcceptEncodingGzip) // TODO: better check
 }
 
 func isContentTypeCompressable(c *gin.Context) bool {
-	supportedContentTypes := []string{"application/json", "text/html"}
-	ct := c.GetHeader("Content-Type")
+	supportedContentTypes := []string{httpconst.ContentTypeJSON, httpconst.ContentTypeHTML}
+	ct := c.GetHeader(httpconst.HeaderContentType)
 	for _, v := range supportedContentTypes {
 		if strings.Contains(v, ct) {
 			return true
@@ -34,7 +36,7 @@ func isContentTypeCompressable(c *gin.Context) bool {
 }
 
 func isRequestCompressed(c *gin.Context) bool {
-	return c.GetHeader("Content-Encoding") == "gzip"
+	return c.GetHeader(httpconst.HeaderContentEncoding) == httpconst.ContentEncodingGzip
 }
 
 func GzipMiddleware() gin.HandlerFunc {
@@ -42,6 +44,7 @@ func GzipMiddleware() gin.HandlerFunc {
 		if isRequestCompressed(c) {
 			gzReader, err := gzip.NewReader(c.Request.Body)
 			if err != nil {
+				fmt.Printf("Gzreader error: %v\n", err)
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
@@ -59,7 +62,7 @@ func GzipMiddleware() gin.HandlerFunc {
 			}
 			defer gzWriter.Close()
 
-			c.Header("Content-Encoding", "gzip")
+			c.Header(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
 			c.Writer = &gzipResponseWriter{Writer: gzWriter, ResponseWriter: c.Writer}
 

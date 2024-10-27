@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -10,13 +12,14 @@ import (
 
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/errs"
+	"github.com/gitslim/monit/internal/logging"
 )
 
 type MemStorage struct {
-	mu         sync.RWMutex
-	metrics    map[string]entities.Metric
-	syncBackup bool
-	backupFd   *os.File
+	mu               sync.RWMutex
+	metrics          map[string]entities.Metric
+	shouldBackupSync bool
+	backupWriter     io.Writer
 }
 
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
@@ -64,11 +67,11 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewMemStorage(syncBackup bool, fd *os.File) *MemStorage {
+func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 	return &MemStorage{
-		metrics:    make(map[string]entities.Metric),
-		syncBackup: syncBackup,
-		backupFd:   fd,
+		metrics:          make(map[string]entities.Metric),
+		shouldBackupSync: shouldBackupSync,
+		backupWriter:     backupWriter,
 	}
 }
 
@@ -79,7 +82,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 
 	var m entities.Metric
 
-	metric, err := s.GetMetric(mName)
+	metric, err := s.GetMetric(mName, mType.String())
 	if err != nil {
 		switch mType {
 		case entities.Gauge:
@@ -96,8 +99,8 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 	}
 
 	s.metrics[mName] = m
-	if s.syncBackup {
-		if err := s.SaveToFile(s.backupFd); err != nil {
+	if s.shouldBackupSync {
+		if err := s.WriteBackup(s.backupWriter); err != nil {
 			return err
 		}
 	}
@@ -105,7 +108,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 }
 
 // GetMetric получает метрику по имени
-func (s *MemStorage) GetMetric(mName string) (entities.Metric, error) {
+func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
 	if metric, exists := s.metrics[mName]; exists {
 		return metric, nil
 	}
@@ -142,41 +145,46 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 	return nil
 }
 
-// SaveToFile - сохраняет данные хранилища в файл
-func (s *MemStorage) SaveToFile(fd *os.File) error {
-	// s.mu.RLock()
-	// defer s.mu.RUnlock()
-
+// WriteBackup - сохраняет данные хранилища в файл
+func (s *MemStorage) WriteBackup(w io.Writer) error {
 	data, err := json.Marshal(&s)
 	if err != nil {
 		return err
 	}
 
-	// очищаем файл
-	if err := fd.Truncate(0); err != nil {
-		return err
-	}
+	if file, ok := w.(*os.File); ok {
+		// очищаем файл
+		if err := file.Truncate(0); err != nil {
+			return err
+		}
 
-	// переходим в начало
-	if _, err := fd.Seek(0, 0); err != nil {
-		return err
+		// переходим в начало
+		if _, err := file.Seek(0, 0); err != nil {
+			return err
+		}
 	}
-	_, err = fd.Write(data)
+	_, err = w.Write(data)
 	return err
 }
 
 // StartPeriodicBackup - запускает периодическое сохранение данных на диск
-func (s *MemStorage) StartPeriodicBackup(fd *os.File, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logger, fd *os.File, interval time.Duration, errChan chan<- error) {
+	defer fd.Close()
 
-	for range ticker.C {
-		if err := s.SaveToFile(fd); err != nil {
-			panic(err)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug("MemStorage backup stopped")
+			return
+		case <-time.After(interval):
+			if err := s.WriteBackup(fd); err != nil {
+				log.Errorf("MemStorage backup error: %v", err)
+				errChan <- err
+				return
+			}
+			log.Debug("MemStorage backup success")
 		}
 	}
-
-	defer fd.Close()
 }
 
 // CreateBackupFile создает файл для записи бэкапа
@@ -194,4 +202,38 @@ func CreateBackupFile(filePath string) (*os.File, error) {
 	}
 
 	return fd, nil
+}
+
+func (s *MemStorage) Ping() error {
+	return nil
+}
+
+func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, dto := range metrics {
+
+		var m entities.Metric
+
+		mType, err := entities.GetMetricType(dto.MType)
+		if err != nil {
+			fmt.Printf("Unknown metric type: %v\n", err)
+		}
+		switch mType {
+		case entities.Gauge:
+			m = entities.NewGaugeMetricFromDTO(dto)
+		case entities.Counter:
+			m = entities.NewCounterMetricFromDTO(dto)
+		}
+
+		s.metrics[m.GetName()] = m
+
+		if s.shouldBackupSync {
+			if err := s.WriteBackup(s.backupWriter); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

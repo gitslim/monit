@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/logging"
+	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,10 +18,15 @@ import (
 func TestUpdateMetrics(t *testing.T) {
 	log, err := logging.NewLogger()
 	if err != nil {
-		panic("Failed init logger")
+		log.Fatal("Failed init logger")
+	}
+	cfg := &conf.Config{
+		StoreInterval:   0,
+		FileStoragePath: "/tmp/.monit/memstorage.json",
+		Restore:         false,
 	}
 
-	conf, err := services.WithMemStorage(log, 0, "/tmp/.monit/memstorage.json", false)
+	conf, err := services.WithMemStorage(context.Background(), log, cfg, make(chan<- error))
 	assert.NoError(t, err)
 
 	metricService, err := services.NewMetricService(conf)
@@ -106,7 +114,7 @@ func TestUpdateMetrics(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost, url, nil)
 			assert.NoError(t, err)
 
-			req.Header.Add("Content-Type", "text/plain")
+			req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypePlain)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 

@@ -39,7 +39,7 @@ func NewGaugeMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
 	}, nil
 }
 
-func NewMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
+func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 	t, err := GetMetricType(mType)
 	if err != nil {
 		return nil, errs.ErrInvalidMetricType
@@ -49,17 +49,37 @@ func NewMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
 
 	switch t {
 	case Counter:
-		dto, err := NewCounterMetricDTO(mName, mType, mValue)
+		v, ok := mValue.(int64)
+		if !ok {
+			return nil, errs.ErrInvalidMetricValue
+		}
+		dto, err := NewCounterMetricDTO(mName, mType, strconv.FormatInt(v, 10))
 		if err != nil {
 			return nil, err
 		}
 		mDto = dto
+
 	case Gauge:
-		dto, err := NewGaugeMetricDTO(mName, mType, mValue)
+		v, ok := mValue.(float64)
+		if !ok {
+			return nil, errs.ErrInvalidMetricValue
+		}
+		dto, err := NewGaugeMetricDTO(mName, mType, strconv.FormatFloat(v, 'f', -1, 64))
 		if err != nil {
 			return nil, err
 		}
 		mDto = dto
+
+	default:
+		return nil, errs.ErrInvalidMetricType
 	}
 	return mDto, nil
 }
+
+// func (dto *MetricDTO) getValue() (float64, error) {
+// 	value, err := strconv.ParseFloat(dto.Value, 64)
+// 	if err != nil {
+// 		return nil, errs.ErrInvalidMetricValue
+// 	}
+// 	return value, nil
+// }
