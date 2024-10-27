@@ -24,6 +24,7 @@ var (
 	UpsertCounterQuery string
 	GetGaugeQuery      string
 	GetCounterQuery    string
+	GetAllMetricsQuery string
 )
 
 type PGStorage struct {
@@ -33,10 +34,11 @@ type PGStorage struct {
 // loadQueries загружает SQL-запросы из файлов и присваивает их переменным.
 func loadQueries() {
 	queries := map[string]*string{
-		"upsert_gauge.sql":   &UpsertGaugeQuery,
-		"upsert_counter.sql": &UpsertCounterQuery,
-		"get_gauge.sql":      &GetGaugeQuery,
-		"get_counter.sql":    &GetCounterQuery,
+		"upsert_gauge.sql":    &UpsertGaugeQuery,
+		"upsert_counter.sql":  &UpsertCounterQuery,
+		"get_gauge.sql":       &GetGaugeQuery,
+		"get_counter.sql":     &GetCounterQuery,
+		"get_all_metrics.sql": &GetAllMetricsQuery,
 	}
 
 	for file, qPtr := range queries {
@@ -183,9 +185,8 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 // GetAllMetrics получает все метрики
 func (s *PGStorage) GetAllMetrics() map[string]entities.Metric {
 	ctx := context.Background()
-	query := `SELECT name, type, value, counter FROM metrics`
 
-	rows, err := s.db.Query(ctx, query)
+	rows, err := s.db.Query(ctx, GetAllMetricsQuery)
 	if err != nil {
 		fmt.Printf("Ошибка выполнения запроса: %v", err)
 		return nil
@@ -303,30 +304,19 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 		}()
 
 		for _, dto := range metrics {
-			var query string
 			mType, err := entities.GetMetricType(dto.MType)
 			if err != nil {
 				fmt.Printf("Bad metric type: %v\n", err)
 			}
 			switch mType {
 			case entities.Gauge:
-				query = `
-INSERT INTO metrics (name, type, value)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET value = EXCLUDED.value`
-				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Value)
+				_, err := tx.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
 				if err != nil {
 					return errs.ErrInternal
 				}
 
 			case entities.Counter:
-				query = `
-INSERT INTO metrics (name, type, counter)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
-				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Delta)
+				_, err := tx.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
 				if err != nil {
 					return errs.ErrInternal
 				}
