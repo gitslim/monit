@@ -67,7 +67,7 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, 
 
 // WithMemStorage конфигурирует MetricService c MemStorage
 func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (MetricServiceConf, error) {
-	pool, err := storage.CreateConnPoll(cfg.DatabaseDSN)
+	pool, err := storage.CreateConnPool(cfg.DatabaseDSN)
 	if err != nil {
 		return nil, err
 	}

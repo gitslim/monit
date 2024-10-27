@@ -223,7 +223,7 @@ func (s *PGStorage) Ping() error {
 	return nil
 }
 
-func CreateConnPoll(dsn string) (*pgxpool.Pool, error) {
+func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse postgres database dsn: %w", err)
