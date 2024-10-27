@@ -12,12 +12,14 @@ type Config struct {
 	Addr           string `env:"ADDRESS"`
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
+	Key            string `env:"KEY"`
 }
 
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
 	pollInterval := flag.Uint64("p", 2, "Интервал сбора метрик (в секундах)")
 	reportInterval := flag.Uint64("r", 10, "Интервал отправки метрик на сервер (в секундах)")
+	key := flag.String("k", "", "Ключ шифрования")
 
 	flag.Parse()
 
@@ -25,6 +27,7 @@ func ParseConfig() (*Config, error) {
 		Addr:           *addr,
 		PollInterval:   *pollInterval,
 		ReportInterval: *reportInterval,
+		Key:            *key,
 	}
 
 	err := env.Parse(cfg)
