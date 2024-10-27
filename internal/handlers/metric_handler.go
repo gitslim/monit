@@ -153,7 +153,11 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 
 // HTML со списком метрик
 func (h *MetricHandler) ListMetrics(c *gin.Context) {
-	metrics := h.metricService.GetAllMetrics()
+	metrics, err := h.metricService.GetAllMetrics()
+	if err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 	res := gin.H{
 		"metrics": metrics,
 	}

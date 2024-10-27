@@ -122,7 +122,7 @@ func (s *MetricService) BatchUpdateMetrics(metrics []*entities.MetricDTO) error 
 	return s.storage.BatchUpdateOrCreateMetrics(metrics)
 }
 
-func (s *MetricService) GetAllMetrics() map[string]entities.Metric {
+func (s *MetricService) GetAllMetrics() (map[string]entities.Metric, error) {
 	return s.storage.GetAllMetrics()
 }
 

@@ -116,8 +116,8 @@ func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, err
 }
 
 // GetAllMetrics получает все метрики
-func (s *MemStorage) GetAllMetrics() map[string]entities.Metric {
-	return s.metrics
+func (s *MemStorage) GetAllMetrics() (map[string]entities.Metric, error) {
+	return s.metrics, nil
 }
 
 // LoadFromFile - загружает данные из файла в хранилище

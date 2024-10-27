@@ -56,13 +56,20 @@ func init() {
 
 func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
-	for name, metric := range s.GetAllMetrics() {
+
+	metrics, err := s.GetAllMetrics()
+	if err != nil {
+		return nil, err
+	}
+
+	for name, metric := range metrics {
 		tmp[name] = map[string]interface{}{
 			"name":  metric.GetName(),
 			"value": metric.GetValue(),
 			"type":  metric.GetType(),
 		}
 	}
+
 	return json.Marshal(tmp)
 }
 
@@ -183,13 +190,12 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 }
 
 // GetAllMetrics получает все метрики
-func (s *PGStorage) GetAllMetrics() map[string]entities.Metric {
+func (s *PGStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	ctx := context.Background()
 
 	rows, err := s.db.Query(ctx, GetAllMetricsQuery)
 	if err != nil {
-		fmt.Printf("Ошибка выполнения запроса: %v", err)
-		return nil
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -234,8 +240,7 @@ func (s *PGStorage) GetAllMetrics() map[string]entities.Metric {
 		}
 	}
 
-	fmt.Printf("METRICS: %v\n", metrics)
-	return metrics
+	return metrics, nil
 }
 
 // Ping проверяет соединение с бд
