@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/stretchr/testify/assert"
@@ -83,8 +84,9 @@ func TestSendMetricTableDriven(t *testing.T) {
 			// 			}
 
 			metrics := []*entities.MetricDTO{dto}
+			cfg := &conf.Config{Addr: server.URL}
 
-			err = sendMetrics(client, server.URL, metrics, false)
+			err = sendMetrics(cfg, client, metrics, false)
 			if tt.sendErr {
 				require.Error(t, err)
 			}
