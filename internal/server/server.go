@@ -20,11 +20,15 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 	// роутер
 	r := gin.New()
 
+	// gin.SetMode(gin.ReleaseMode)
+
 	// middlewares
 	r.Use(middleware.GzipMiddleware())
 	r.Use(middleware.LoggerMiddleware(log))
-
-	// gin.SetMode(gin.ReleaseMode)
+	if cfg.Key != "" {
+		log.Debug("Using signature middleware")
+		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
+	}
 
 	r.LoadHTMLGlob("templates/*")
 

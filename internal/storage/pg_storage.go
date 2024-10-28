@@ -3,8 +3,11 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"log"
+	"path/filepath"
 	"time"
 
 	"github.com/gitslim/monit/internal/entities"
@@ -13,19 +16,60 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+//go:embed sql/*.sql
+var sqlFS embed.FS
+
+var (
+	UpsertGaugeQuery   string
+	UpsertCounterQuery string
+	GetGaugeQuery      string
+	GetCounterQuery    string
+	GetAllMetricsQuery string
+)
+
 type PGStorage struct {
 	db *pgxpool.Pool
 }
 
+// loadQueries загружает SQL-запросы из файлов и присваивает их переменным.
+func loadQueries() {
+	queries := map[string]*string{
+		"upsert_gauge.sql":    &UpsertGaugeQuery,
+		"upsert_counter.sql":  &UpsertCounterQuery,
+		"get_gauge.sql":       &GetGaugeQuery,
+		"get_counter.sql":     &GetCounterQuery,
+		"get_all_metrics.sql": &GetAllMetricsQuery,
+	}
+
+	for file, qPtr := range queries {
+		data, err := sqlFS.ReadFile(filepath.Join("sql", file))
+		if err != nil {
+			log.Fatalf("Ошибка загрузки SQL-запроса из файла %s: %v", file, err)
+		}
+		*qPtr = string(data)
+	}
+}
+
+func init() {
+	loadQueries()
+}
+
 func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
-	for name, metric := range s.GetAllMetrics() {
+
+	metrics, err := s.GetAllMetrics()
+	if err != nil {
+		return nil, err
+	}
+
+	for name, metric := range metrics {
 		tmp[name] = map[string]interface{}{
 			"name":  metric.GetName(),
 			"value": metric.GetValue(),
 			"type":  metric.GetType(),
 		}
 	}
+
 	return json.Marshal(tmp)
 }
 
@@ -76,19 +120,13 @@ func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.Metric
 	return retry.Retry(func() error {
 		ctx := context.Background()
 
-		var query string
 		switch metricType {
 		case entities.Gauge:
 			v, ok := value.(float64)
 			if !ok {
 				return errs.ErrInvalidMetricValue
 			}
-			query = `
-INSERT INTO metrics (name, type, value)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET value = EXCLUDED.value`
-			_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
+			_, err := s.db.Exec(ctx, UpsertGaugeQuery, name, metricType.String(), v)
 			if err != nil {
 				return errs.ErrInternal
 			}
@@ -98,12 +136,7 @@ DO UPDATE SET value = EXCLUDED.value`
 			if !ok {
 				return errs.ErrInvalidMetricValue
 			}
-			query = `
-INSERT INTO metrics (name, type, counter)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
-			_, err := s.db.Exec(ctx, query, name, metricType.String(), v)
+			_, err := s.db.Exec(ctx, UpsertCounterQuery, name, metricType.String(), v)
 			if err != nil {
 				//			fmt.Printf("db error: %v", err)
 				return errs.ErrInternal
@@ -129,8 +162,7 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 	switch metricType {
 	case entities.Gauge:
 		var value float64
-		query := `SELECT value FROM metrics WHERE name=$1 AND type=$2`
-		err := s.db.QueryRow(ctx, query, mName, mType).Scan(&value)
+		err := s.db.QueryRow(ctx, GetGaugeQuery, mName, mType).Scan(&value)
 		if err != nil {
 			fmt.Printf("Ошибка выполнения запроса: %v", err)
 			return nil, errs.ErrMetricNotFound
@@ -142,8 +174,7 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 
 	case entities.Counter:
 		var counter int64
-		query := `SELECT counter FROM metrics WHERE name=$1 AND type=$2`
-		err := s.db.QueryRow(ctx, query, mName, mType).Scan(&counter)
+		err := s.db.QueryRow(ctx, GetCounterQuery, mName, mType).Scan(&counter)
 		if err != nil {
 			fmt.Printf("Ошибка выполнения запроса: %v", err)
 			return nil, errs.ErrMetricNotFound
@@ -159,14 +190,12 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 }
 
 // GetAllMetrics получает все метрики
-func (s *PGStorage) GetAllMetrics() map[string]entities.Metric {
+func (s *PGStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	ctx := context.Background()
-	query := `SELECT name, type, value, counter FROM metrics`
 
-	rows, err := s.db.Query(ctx, query)
+	rows, err := s.db.Query(ctx, GetAllMetricsQuery)
 	if err != nil {
-		fmt.Printf("Ошибка выполнения запроса: %v", err)
-		return nil
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -211,8 +240,7 @@ func (s *PGStorage) GetAllMetrics() map[string]entities.Metric {
 		}
 	}
 
-	fmt.Printf("METRICS: %v\n", metrics)
-	return metrics
+	return metrics, nil
 }
 
 // Ping проверяет соединение с бд
@@ -223,7 +251,8 @@ func (s *PGStorage) Ping() error {
 	return nil
 }
 
-func CreateConnPoll(dsn string) (*pgxpool.Pool, error) {
+func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
+	// По дефолту запросы подготавливаются и кэшируются: default_query_exec_mode=cache_statement
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse postgres database dsn: %w", err)
@@ -280,30 +309,19 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 		}()
 
 		for _, dto := range metrics {
-			var query string
 			mType, err := entities.GetMetricType(dto.MType)
 			if err != nil {
 				fmt.Printf("Bad metric type: %v\n", err)
 			}
 			switch mType {
 			case entities.Gauge:
-				query = `
-INSERT INTO metrics (name, type, value)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET value = EXCLUDED.value`
-				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Value)
+				_, err := tx.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
 				if err != nil {
 					return errs.ErrInternal
 				}
 
 			case entities.Counter:
-				query = `
-INSERT INTO metrics (name, type, counter)
-VALUES ($1, $2, $3)
-ON CONFLICT (name, type)
-DO UPDATE SET counter = metrics.counter + EXCLUDED.counter`
-				_, err := tx.Exec(ctx, query, dto.ID, dto.MType, dto.Delta)
+				_, err := tx.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
 				if err != nil {
 					return errs.ErrInternal
 				}

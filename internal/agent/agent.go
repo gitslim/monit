@@ -3,9 +3,13 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -14,6 +18,7 @@ import (
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
+	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/retry"
 )
 
@@ -78,7 +83,19 @@ func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-func sendJSON(client *http.Client, url string, jsonData []byte) error {
+func makeHash(rc io.ReadCloser, key string) (string, error) {
+	var buf []byte
+	_, err := rc.Read(buf)
+	if err != nil {
+		return "", err
+	}
+
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(buf)
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func sendJSON(cfg *conf.Config, client *http.Client, url string, jsonData []byte) error {
 	buf, err := compressGzip(jsonData, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to compress with gzip: %v", err)
@@ -91,6 +108,18 @@ func sendJSON(client *http.Client, url string, jsonData []byte) error {
 
 	req.Header.Set(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
 	req.Header.Set(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
+
+	if cfg.Key != "" {
+		body, err := req.GetBody()
+		if err != nil {
+			return err
+		}
+		hash, err := makeHash(body, cfg.Key)
+		if err != nil {
+			return err
+		}
+		req.Header.Set(httpconst.HeaderHashSHA256, hash)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -119,7 +148,9 @@ func sendJSON(client *http.Client, url string, jsonData []byte) error {
 }
 
 // Функция для отправки всех метрик на сервер
-func sendMetrics(client *http.Client, serverURL string, metrics []*entities.MetricDTO, batch bool) error {
+func sendMetrics(cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
+	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
+
 	return retry.Retry(func() error {
 		var url string
 		var jsonData []byte
@@ -130,9 +161,9 @@ func sendMetrics(client *http.Client, serverURL string, metrics []*entities.Metr
 			url = fmt.Sprintf("%s/updates/", serverURL)
 			jsonData, err = json.Marshal(metrics)
 			if err != nil {
-				return fmt.Errorf("failed to marshal metric batch")
+				return err
 			}
-			return sendJSON(client, url, jsonData)
+			return sendJSON(cfg, client, url, jsonData)
 		} else {
 			// Отправляем метрики по одной
 			url = fmt.Sprintf("%s/update/", serverURL)
@@ -140,11 +171,11 @@ func sendMetrics(client *http.Client, serverURL string, metrics []*entities.Metr
 			for _, metric := range metrics {
 				jsonData, err = json.Marshal(&metric)
 				if err != nil {
-					return fmt.Errorf("failed to marshal metric")
+					return err
 				}
-				err := sendJSON(client, url, jsonData)
+				err := sendJSON(cfg, client, url, jsonData)
 				if err != nil {
-					return fmt.Errorf("failed to send metric")
+					return err
 				}
 			}
 			return nil
@@ -152,8 +183,7 @@ func sendMetrics(client *http.Client, serverURL string, metrics []*entities.Metr
 	}, 3)
 }
 
-func Start(cfg *conf.Config) {
-	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
+func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 	pollInterval := time.Duration(cfg.PollInterval * uint64(time.Second))
 	reportInterval := time.Duration(cfg.ReportInterval * uint64(time.Second))
 
@@ -161,7 +191,7 @@ func Start(cfg *conf.Config) {
 	var pollCount int64          // Счётчик обновлений PollCount
 
 	client := &http.Client{}
-	fmt.Println("Agent started")
+	log.Info("Agent started")
 
 	for {
 		var metrics []*entities.MetricDTO
@@ -169,7 +199,7 @@ func Start(cfg *conf.Config) {
 		for key, value := range newMetrics {
 			dto, err := entities.NewMetricDTO(key, "gauge", value)
 			if err != nil {
-				log.Printf("Failed to create gauge DTO: %s\n", key)
+				log.Errorf("Failed to create gauge DTO: %s\n", key)
 			}
 			metrics = append(metrics, dto)
 		}
@@ -179,10 +209,13 @@ func Start(cfg *conf.Config) {
 		if time.Since(lastReportTime) >= reportInterval {
 			dto, err := entities.NewMetricDTO("PollCount", "counter", pollCount)
 			if err != nil {
-				log.Println("Failed to create counter DTO: PollCount")
+				log.Errorf("Failed to create counter DTO: PollCount")
 			}
 			metrics = append(metrics, dto)
-			sendMetrics(client, serverURL, metrics, false)
+			err = sendMetrics(cfg, client, metrics, false)
+			if err != nil {
+				fmt.Printf("Send metrics failed: %v\n", err)
+			}
 			lastReportTime = time.Now() // Обновляем время последней отправки
 		}
 

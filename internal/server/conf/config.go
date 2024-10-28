@@ -14,6 +14,7 @@ type Config struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 
 func ParseConfig() (*Config, error) {
@@ -22,6 +23,7 @@ func ParseConfig() (*Config, error) {
 	fileStoragePath := flag.String("f", "/tmp/.monit/memstorage.json", "Путь до файла сохранения данных")
 	restore := flag.Bool("r", true, "Флаг загрузки сохраненных данных при старте сервера")
 	databaseDSN := flag.String("d", "", "Строка подключения к базе данных (DSN)")
+	key := flag.String("k", "", "Ключ шифрования")
 
 	flag.Parse()
 
@@ -31,6 +33,7 @@ func ParseConfig() (*Config, error) {
 		FileStoragePath: *fileStoragePath,
 		Restore:         *restore,
 		DatabaseDSN:     *databaseDSN,
+		Key:             *key,
 	}
 
 	err := env.Parse(cfg)
