@@ -77,9 +77,6 @@ func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 
 // UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее
 func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricType, value interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var m entities.Metric
 
 	metric, err := s.GetMetric(mName, mType.String())
@@ -98,7 +95,10 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 		return err
 	}
 
+	s.mu.Lock()
 	s.metrics[mName] = m
+	s.mu.Unlock()
+
 	if s.shouldBackupSync {
 		if err := s.WriteBackup(s.backupWriter); err != nil {
 			return err
@@ -109,6 +109,8 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 
 // GetMetric получает метрику по имени
 func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if metric, exists := s.metrics[mName]; exists {
 		return metric, nil
 	}
@@ -117,6 +119,9 @@ func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, err
 
 // GetAllMetrics получает все метрики
 func (s *MemStorage) GetAllMetrics() (map[string]entities.Metric, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	return s.metrics, nil
 }
 
@@ -147,7 +152,9 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 
 // WriteBackup - сохраняет данные хранилища в файл
 func (s *MemStorage) WriteBackup(w io.Writer) error {
+	s.mu.RLock()
 	data, err := json.Marshal(&s)
+	s.mu.RUnlock()
 	if err != nil {
 		return err
 	}
@@ -209,9 +216,6 @@ func (s *MemStorage) Ping() error {
 }
 
 func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	for _, dto := range metrics {
 
 		var m entities.Metric
@@ -227,7 +231,9 @@ func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) e
 			m = entities.NewCounterMetricFromDTO(dto)
 		}
 
+		s.mu.Lock()
 		s.metrics[m.GetName()] = m
+		s.mu.Unlock()
 
 		if s.shouldBackupSync {
 			if err := s.WriteBackup(s.backupWriter); err != nil {
