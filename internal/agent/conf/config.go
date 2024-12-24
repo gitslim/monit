@@ -12,12 +12,16 @@ type Config struct {
 	Addr           string `env:"ADDRESS"`
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
+	Key            string `env:"KEY"`
+	RateLimit      uint64 `env:"RATE_LIMIT"`
 }
 
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
 	pollInterval := flag.Uint64("p", 2, "Интервал сбора метрик (в секундах)")
 	reportInterval := flag.Uint64("r", 10, "Интервал отправки метрик на сервер (в секундах)")
+	key := flag.String("k", "", "Ключ шифрования")
+	rateLimit := flag.Uint64("l", 10, "Лимит одновременно исходящих запросов на отправку метрик")
 
 	flag.Parse()
 
@@ -25,6 +29,8 @@ func ParseConfig() (*Config, error) {
 		Addr:           *addr,
 		PollInterval:   *pollInterval,
 		ReportInterval: *reportInterval,
+		Key:            *key,
+		RateLimit:      *rateLimit,
 	}
 
 	err := env.Parse(cfg)
@@ -45,5 +51,8 @@ func ParseConfig() (*Config, error) {
 		return nil, errors.New("интервал отправки метрик на сервер не может быть равен 0")
 	}
 
+	if cfg.RateLimit == 0 {
+		return nil, errors.New("лимит одновременно исходящих запросов на отправку метрик не может быть равен 0")
+	}
 	return cfg, nil
 }

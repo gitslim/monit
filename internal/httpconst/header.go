@@ -7,6 +7,7 @@ const (
 	HeaderAcceptEncoding  = "Accept-Encoding"
 	HeaderAuthorization   = "Authorization"
 	HeaderUserAgent       = "User-Agent"
+	HeaderHashSHA256      = "HashSHA256"
 )
 
 // HTTP header values
