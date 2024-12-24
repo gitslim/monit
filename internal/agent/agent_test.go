@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSendMetricTableDriven(t *testing.T) {
+func TestSendMetrics(t *testing.T) {
 	client := &http.Client{}
 	dummyJSON, _ := json.Marshal(nil)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +74,7 @@ func TestSendMetricTableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			var err error
 
 			dto, err := entities.NewMetricDTO(tt.metricName, tt.metricType, tt.value)
@@ -86,7 +88,7 @@ func TestSendMetricTableDriven(t *testing.T) {
 			metrics := []*entities.MetricDTO{dto}
 			cfg := &conf.Config{Addr: server.URL}
 
-			err = sendMetrics(cfg, client, metrics, false)
+			err = sendMetrics(ctx, cfg, client, metrics, false)
 			if tt.sendErr {
 				require.Error(t, err)
 			}

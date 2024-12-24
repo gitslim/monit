@@ -171,13 +171,16 @@ func makeHash(rc io.ReadCloser, key string) (string, error) {
 }
 
 // sendJSON - Отправка метрик в формате JSON батчем или по одной
-func sendJSON(cfg *conf.Config, client *http.Client, url string, jsonData []byte) error {
+func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url string, jsonData []byte) error {
 	buf, err := compressGzip(jsonData, gzip.BestSpeed)
 	if err != nil {
 		return fmt.Errorf("failed to compress with gzip: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, buf)
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
@@ -207,24 +210,11 @@ func sendJSON(cfg *conf.Config, client *http.Client, url string, jsonData []byte
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// if batch {
-	// 	var v []entities.MetricDTO
-	// 	err = json.NewDecoder(resp.Body).Decode(&v)
-	// } else {
-	// 	var v entities.MetricDTO
-	// 	err = json.NewDecoder(resp.Body).Decode(&v)
-
-	// }
-
-	// if err != nil {
-	// 	return fmt.Errorf("json decode error")
-	// }
-
 	return nil
 }
 
 // sendMetrics - Функция для отправки всех метрик на сервер
-func sendMetrics(cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
+func sendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
 
 	return retry.Retry(func() error {
@@ -239,7 +229,7 @@ func sendMetrics(cfg *conf.Config, client *http.Client, metrics []*entities.Metr
 			if err != nil {
 				return err
 			}
-			return sendJSON(cfg, client, url, jsonData)
+			return sendJSON(ctx, cfg, client, url, jsonData)
 		} else {
 			// Отправляем метрики по одной
 			url = fmt.Sprintf("%s/update/", serverURL)
@@ -249,7 +239,7 @@ func sendMetrics(cfg *conf.Config, client *http.Client, metrics []*entities.Metr
 				if err != nil {
 					return err
 				}
-				err := sendJSON(cfg, client, url, jsonData)
+				err := sendJSON(ctx, cfg, client, url, jsonData)
 				if err != nil {
 					return err
 				}
@@ -273,7 +263,7 @@ func sendMetricsWorker(ctx context.Context, cfg *conf.Config, log *logging.Logge
 		case <-ctx.Done():
 			return
 		case <-reportTicker.C:
-			err := sendMetrics(cfg, client, batch, false)
+			err := sendMetrics(ctx, cfg, client, batch, false)
 			if err != nil {
 				log.Errorf("Send metrics failed: %v\n", err)
 			}
@@ -307,36 +297,4 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 	// Ожидание завершения
 	wg.Wait()
 
-	// lastReportTime := time.Now() // Время последней отправки метрик
-	// var pollCount int64          // Счётчик обновлений PollCount
-
-	// for {
-	// 	var metrics []*entities.MetricDTO
-	// 	newMetrics := gatherRuntimeMetrics()
-	// 	for key, value := range newMetrics {
-	// 		dto, err := entities.NewMetricDTO(key, "gauge", value)
-	// 		if err != nil {
-	// 			log.Errorf("Failed to create gauge DTO: %s\n", key)
-	// 		}
-	// 		metrics = append(metrics, dto)
-	// 	}
-	// 	pollCount++ // Увеличиваем счетчик PollCount
-
-	// 	// Если прошло 10 секунд с момента последней отправки, отправляем метрики
-	// 	if time.Since(lastReportTime) >= reportInterval {
-	// 		dto, err := entities.NewMetricDTO("PollCount", "counter", pollCount)
-	// 		if err != nil {
-	// 			log.Errorf("Failed to create counter DTO: PollCount")
-	// 		}
-	// 		metrics = append(metrics, dto)
-	// 		err = sendMetrics(cfg, client, metrics, true)
-	// 		if err != nil {
-	// 			fmt.Printf("Send metrics failed: %v\n", err)
-	// 		}
-	// 		lastReportTime = time.Now() // Обновляем время последней отправки
-	// 	}
-
-	// 	// Собираем метрики из runtime каждые 2 секунды (pollInterval)
-	// 	time.Sleep(pollInterval)
-	//	}
 }
