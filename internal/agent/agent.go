@@ -26,8 +26,8 @@ import (
 )
 
 // gatherRuntimeMetrics - Функция для сбора метрик из пакета runtime
-func gatherRuntimeMetrics(ctx context.Context, cfg *conf.Config, log *logging.Logger, metrics chan<- entities.MetricDTO) {
-	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval * uint64(time.Second)))
+func gatherRuntimeMetrics(ctx context.Context, log *logging.Logger, wp *WorkerPool) {
+	pollTicker := time.NewTicker(time.Duration(wp.cfg.PollInterval * uint64(time.Second)))
 	var memStats runtime.MemStats
 
 	for {
@@ -76,7 +76,7 @@ func gatherRuntimeMetrics(ctx context.Context, cfg *conf.Config, log *logging.Lo
 					log.Errorf("Failed to create gauge DTO: %k", k)
 				} else {
 					// log.Debugf("Gauge: %+v", *gauge)
-					metrics <- *gauge
+					wp.metrics <- *gauge
 				}
 			}
 			counter, err := entities.NewMetricDTO("PollCount", "counter", int64(1))
@@ -84,13 +84,13 @@ func gatherRuntimeMetrics(ctx context.Context, cfg *conf.Config, log *logging.Lo
 				log.Error("Failed to create counter DTO: PollCount")
 			}
 			// log.Debugf("PollCount: %+v", *counter)
-			metrics <- *counter
+			wp.metrics <- *counter
 		}
 	}
 }
 
-func gatherSystemMetrics(ctx context.Context, cfg *conf.Config, log *logging.Logger, metrics chan<- entities.MetricDTO) {
-	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval * uint64(time.Second)))
+func gatherSystemMetrics(ctx context.Context, log *logging.Logger, wp *WorkerPool) {
+	pollTicker := time.NewTicker(time.Duration(wp.cfg.PollInterval * uint64(time.Second)))
 	var metric *entities.MetricDTO
 
 	for {
@@ -106,14 +106,14 @@ func gatherSystemMetrics(ctx context.Context, cfg *conf.Config, log *logging.Log
 				if err != nil {
 					log.Error("Failed to create gauge DTO: TotalMemory")
 				} else {
-					metrics <- *metric
+					wp.metrics <- *metric
 				}
 
 				metric, err = entities.NewMetricDTO("FreeMemory", "gauge", float64(vMem.Free))
 				if err != nil {
 					log.Error("Failed to create gauge DTO: FreeMemory")
 				} else {
-					metrics <- *metric
+					wp.metrics <- *metric
 				}
 			}
 
@@ -127,7 +127,7 @@ func gatherSystemMetrics(ctx context.Context, cfg *conf.Config, log *logging.Log
 					if err != nil {
 						log.Errorf("Failed to create gauge DTO: %v", metricName)
 					} else {
-						metrics <- *metric
+						wp.metrics <- *metric
 					}
 
 				}
@@ -250,20 +250,20 @@ func sendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, met
 }
 
 // sendMetricsWorker - Воркер для отправки метрик
-func sendMetricsWorker(ctx context.Context, cfg *conf.Config, log *logging.Logger, client *http.Client, metrics <-chan entities.MetricDTO, wg *sync.WaitGroup) {
-	defer wg.Done()
+func sendMetricsWorker(ctx context.Context, log *logging.Logger, wp *WorkerPool) {
+	defer wp.wg.Done()
 
-	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval * uint64(time.Second)))
+	reportTicker := time.NewTicker(time.Duration(wp.cfg.ReportInterval * uint64(time.Second)))
 	batch := []*entities.MetricDTO{}
 
 	for {
 		select {
-		case metric := <-metrics:
+		case metric := <-wp.metrics:
 			batch = append(batch, &metric)
 		case <-ctx.Done():
 			return
 		case <-reportTicker.C:
-			err := sendMetrics(ctx, cfg, client, batch, false)
+			err := sendMetrics(ctx, wp.cfg, wp.client, batch, false)
 			if err != nil {
 				log.Errorf("Send metrics failed: %v\n", err)
 			}
@@ -271,30 +271,53 @@ func sendMetricsWorker(ctx context.Context, cfg *conf.Config, log *logging.Logge
 	}
 }
 
+// WorkerPool - Пул worker'ов
+type WorkerPool struct {
+	metrics chan entities.MetricDTO
+	wg      *sync.WaitGroup
+	cfg     *conf.Config
+	client  *http.Client
+}
+
+// Start - Запуск пула worker'ов
+func (w *WorkerPool) Start(f func()) {
+	for i := 0; i < int(w.cfg.RateLimit); i++ {
+		w.wg.Add(1)
+		go f()
+	}
+}
+
+// Wait - Ожидание завершения всех worker'ов
+func (w *WorkerPool) Wait() {
+	w.wg.Wait()
+}
+
+// NewWorkerPool - Создание пула worker'ов
+func NewWorkerPool(cfg *conf.Config) *WorkerPool {
+	return &WorkerPool{
+		metrics: make(chan entities.MetricDTO, cfg.RateLimit),
+		wg:      &sync.WaitGroup{},
+		cfg:     cfg,
+		client:  &http.Client{},
+	}
+}
+
 // Start - Запуск агента
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
-	// pollInterval := time.Duration(cfg.PollInterval * uint64(time.Second))
-	// reportInterval := time.Duration(cfg.ReportInterval * uint64(time.Second))
-
-	client := &http.Client{}
 	log.Info("Agent started")
 
-	metrics := make(chan entities.MetricDTO, cfg.RateLimit)
-	var wg sync.WaitGroup
-
 	// Запуск worker pool
-	for i := 0; i < int(cfg.RateLimit); i++ {
-		wg.Add(1)
-		go sendMetricsWorker(ctx, cfg, log, client, metrics, &wg)
-	}
+	wp := NewWorkerPool(cfg)
+	wp.Start(func() {
+		sendMetricsWorker(ctx, log, wp)
+	})
 
-	// Горутина для сбора рантайм метрик
-	go gatherRuntimeMetrics(ctx, cfg, log, metrics)
+	// Сбор рантайм метрик
+	go gatherRuntimeMetrics(ctx, log, wp)
 
-	// Горутина для сбора системных метрик
-	go gatherSystemMetrics(ctx, cfg, log, metrics)
+	// Сбор системных метрик
+	go gatherSystemMetrics(ctx, log, wp)
 
-	// Ожидание завершения
-	wg.Wait()
-
+	// Ожидание завершения worker pool
+	wp.Wait()
 }
