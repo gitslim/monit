@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gitslim/monit/internal/agent/conf"
+	"github.com/gitslim/monit/internal/agent/sender"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/stretchr/testify/assert"
@@ -88,7 +89,7 @@ func TestSendMetrics(t *testing.T) {
 			metrics := []*entities.MetricDTO{dto}
 			cfg := &conf.Config{Addr: server.URL}
 
-			err = sendMetrics(ctx, cfg, client, metrics, false)
+			err = sender.SendMetrics(ctx, cfg, client, metrics, false)
 			if tt.sendErr {
 				require.Error(t, err)
 			}
