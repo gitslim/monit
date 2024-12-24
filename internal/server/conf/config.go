@@ -17,13 +17,22 @@ type Config struct {
 	Key             string `env:"KEY"`
 }
 
+const (
+	DefaultAddr            = "localhost:8080"
+	DefaultStoreInterval   = 300
+	DefaultFileStoragePath = "/tmp/.monit/memstorage.json"
+	DefaultRestore         = true
+	DefaultDatabaseDSN     = ""
+	DefaultKey             = ""
+)
+
 func ParseConfig() (*Config, error) {
-	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
-	storeInterval := flag.Uint64("i", 300, "Интервал сохранения данных на диск (в секундах)")
-	fileStoragePath := flag.String("f", "/tmp/.monit/memstorage.json", "Путь до файла сохранения данных")
-	restore := flag.Bool("r", true, "Флаг загрузки сохраненных данных при старте сервера")
-	databaseDSN := flag.String("d", "", "Строка подключения к базе данных (DSN)")
-	key := flag.String("k", "", "Ключ шифрования")
+	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
+	storeInterval := flag.Uint64("i", DefaultStoreInterval, "Интервал сохранения данных на диск (в секундах)")
+	fileStoragePath := flag.String("f", DefaultFileStoragePath, "Путь до файла сохранения данных")
+	restore := flag.Bool("r", DefaultRestore, "Флаг загрузки сохраненных данных при старте сервера")
+	databaseDSN := flag.String("d", DefaultDatabaseDSN, "Строка подключения к базе данных (DSN)")
+	key := flag.String("k", DefaultKey, "Ключ шифрования")
 
 	flag.Parse()
 

@@ -16,12 +16,20 @@ type Config struct {
 	RateLimit      uint64 `env:"RATE_LIMIT"`
 }
 
+const (
+	DefaultAddr           = "localhost:8080"
+	DefaultPollInterval   = 2
+	DefaultReportInterval = 10
+	DefaultKey            = ""
+	DefaultRateLimit      = 10
+)
+
 func ParseConfig() (*Config, error) {
-	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
-	pollInterval := flag.Uint64("p", 2, "Интервал сбора метрик (в секундах)")
-	reportInterval := flag.Uint64("r", 10, "Интервал отправки метрик на сервер (в секундах)")
-	key := flag.String("k", "", "Ключ шифрования")
-	rateLimit := flag.Uint64("l", 10, "Лимит одновременно исходящих запросов на отправку метрик")
+	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
+	pollInterval := flag.Uint64("p", DefaultPollInterval, "Интервал сбора метрик (в секундах)")
+	reportInterval := flag.Uint64("r", DefaultReportInterval, "Интервал отправки метрик на сервер (в секундах)")
+	key := flag.String("k", DefaultKey, "Ключ шифрования")
+	rateLimit := flag.Uint64("l", DefaultRateLimit, "Лимит одновременно исходящих запросов на отправку метрик")
 
 	flag.Parse()
 
