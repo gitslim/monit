@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -20,25 +19,29 @@ func TestCollectMetrics(t *testing.T) {
 	}
 
 	metricsCh := make(chan entities.MetricDTO, 100)
-	wp := &worker.WorkerPool{
-		Metrics: metricsCh,
-		WG:      &sync.WaitGroup{},
-		Cfg:     cfg,
-	}
+	wp := worker.NewWorkerPool(cfg)
+	wp.Metrics = metricsCh
 
 	log, err := logging.NewLogger()
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	go CollectRuntimeMetrics(ctx, log, wp)
-	go CollectSystemMetrics(ctx, log, wp)
+	// Добавление worker'ов сбора метрик
+	wp.AddWorker(func() {
+		CollectRuntimeMetrics(ctx, log, wp)
+	})
+	wp.AddWorker(func() {
+		CollectSystemMetrics(ctx, log, wp)
+	})
 
-	time.Sleep(2 * time.Second)
-	cancel()
+	// Завершаем сбор метрик
 	time.Sleep(1 * time.Second)
-	close(metricsCh)
+	cancel()
+
+	// Ждем завершения пула worker'ов
+	wp.WaitClose()
 
 	collectedMetrics := make(map[string]bool)
 	for metric := range metricsCh {

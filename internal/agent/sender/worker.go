@@ -11,8 +11,6 @@ import (
 
 // SendMetricsWorker - Воркер для отправки метрик
 func SendMetricsWorker(ctx context.Context, log *logging.Logger, wp *worker.WorkerPool) {
-	defer wp.WG.Done()
-
 	reportTicker := time.NewTicker(time.Duration(wp.Cfg.ReportInterval * uint64(time.Second)))
 	batch := []*entities.MetricDTO{}
 

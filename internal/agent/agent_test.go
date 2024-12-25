@@ -96,6 +96,11 @@ func TestSendMetrics(t *testing.T) {
 			// else {
 			// 				assert.NoError(t, err)
 			// 			}
+
+			err = sender.SendMetrics(ctx, cfg, client, metrics, true)
+			if tt.sendErr {
+				require.Error(t, err)
+			}
 		})
 	}
 }

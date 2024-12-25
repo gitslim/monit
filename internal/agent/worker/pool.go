@@ -20,13 +20,26 @@ type WorkerPool struct {
 func (w *WorkerPool) Start(f func()) {
 	for i := 0; i < int(w.Cfg.RateLimit); i++ {
 		w.WG.Add(1)
-		go f()
+		go func() {
+			defer w.WG.Done()
+			f()
+		}()
 	}
 }
 
-// Wait - Ожидание завершения всех worker'ов
-func (w *WorkerPool) Wait() {
+// AddWorker - Добавление worker'а в пул
+func (w *WorkerPool) AddWorker(f func()) {
+	w.WG.Add(1)
+	go func() {
+		defer w.WG.Done()
+		f()
+	}()
+}
+
+// WaitClose - Ожидание завершения всех worker'ов и закрытие канала
+func (w *WorkerPool) WaitClose() {
 	w.WG.Wait()
+	close(w.Metrics)
 }
 
 // NewWorkerPool - Создание пула worker'ов

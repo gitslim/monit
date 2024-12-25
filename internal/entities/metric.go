@@ -84,11 +84,14 @@ func NewGaugeMetric(name string) *GaugeMetric {
 	return &GaugeMetric{Name: name}
 }
 
-func NewGaugeMetricFromDTO(dto *MetricDTO) *GaugeMetric {
+func NewGaugeMetricFromDTO(dto *MetricDTO) (*GaugeMetric, error) {
+	if dto.ID == "" || dto.Value == nil {
+		return nil, fmt.Errorf("invalid gauge metric dto: %v", dto)
+	}
 	return &GaugeMetric{
 		Name:  dto.ID,
 		Value: *dto.Value,
-	}
+	}, nil
 }
 
 func (g *GaugeMetric) GetName() string {
@@ -155,11 +158,14 @@ func NewCounterMetric(name string) *CounterMetric {
 	return &CounterMetric{Name: name}
 }
 
-func NewCounterMetricFromDTO(dto *MetricDTO) *CounterMetric {
+func NewCounterMetricFromDTO(dto *MetricDTO) (*CounterMetric, error) {
+	if dto.ID == "" || dto.Delta == nil {
+		return nil, fmt.Errorf("invalid counter metric dto: %v", dto)
+	}
 	return &CounterMetric{
 		Name:  dto.ID,
 		Value: *dto.Delta,
-	}
+	}, nil
 }
 
 func (c *CounterMetric) GetName() string {

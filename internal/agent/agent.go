@@ -22,12 +22,14 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 		sender.SendMetricsWorker(ctx, log, wp)
 	})
 
-	// Сбор рантайм метрик
-	go collector.CollectRuntimeMetrics(ctx, log, wp)
-
-	// Сбор системных метрик
-	go collector.CollectSystemMetrics(ctx, log, wp)
+	// Добавление worker'ов сбора метрик
+	wp.AddWorker(func() {
+		collector.CollectRuntimeMetrics(ctx, log, wp)
+	})
+	wp.AddWorker(func() {
+		collector.CollectSystemMetrics(ctx, log, wp)
+	})
 
 	// Ожидание завершения пула worker'ов
-	wp.Wait()
+	wp.WaitClose()
 }

@@ -226,9 +226,20 @@ func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) e
 		}
 		switch mType {
 		case entities.Gauge:
-			m = entities.NewGaugeMetricFromDTO(dto)
+			m, err = entities.NewGaugeMetricFromDTO(dto)
+			if err != nil {
+				fmt.Printf("Error creating gauge metric: %v\n", err)
+				continue
+			}
 		case entities.Counter:
-			m = entities.NewCounterMetricFromDTO(dto)
+			m, err = entities.NewCounterMetricFromDTO(dto)
+			if err != nil {
+				fmt.Printf("Error creating counter metric: %v\n", err)
+				continue
+			}
+		default:
+			fmt.Printf("Unknown metric type: %v\n", mType)
+			continue
 		}
 
 		s.mu.Lock()

@@ -27,7 +27,7 @@ func isJSONRequest(c *gin.Context) bool {
 }
 
 func writeError(c *gin.Context, err error) {
-	fmt.Printf("GetMetric error: %v\n", err)
+	fmt.Printf("Error: %v\n", err)
 	var e *errs.Error
 	if errors.As(err, &e) {
 		if isJSONRequest(c) {
@@ -49,7 +49,6 @@ func writeError(c *gin.Context, err error) {
 // UpdateMetric обновляет метрику
 func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
-	// fmt.Printf("req: %+v\n", c.Request)
 
 	if isJSONRequest(c) {
 		var dto *entities.MetricDTO
@@ -60,15 +59,16 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 			return
 		}
 
-		// fmt.Printf("dto: %+v\n", dto)
-
 		mType = dto.MType
 		mName = dto.ID
 
-		if dto.Delta != nil {
+		if mType == "counter" && dto.Delta != nil {
 			mValue = strconv.FormatInt(*dto.Delta, 10)
-		} else if dto.Value != nil {
+		} else if mType == "gauge" && dto.Value != nil {
 			mValue = strconv.FormatFloat(*dto.Value, 'f', -1, 64)
+		} else {
+			writeError(c, errs.ErrBadRequest)
+			return
 		}
 
 	} else {
@@ -104,9 +104,10 @@ func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 
 	err := json.NewDecoder(c.Request.Body).Decode(&metrics)
 	if err != nil {
-		writeError(c, err)
+		writeError(c, fmt.Errorf("error decoding JSON: %w", err))
 		return
 	}
+	fmt.Printf("Metrics: %v\n", metrics)
 
 	if err := h.metricService.BatchUpdateMetrics(metrics); err != nil {
 		writeError(c, err)
