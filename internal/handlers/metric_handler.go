@@ -38,25 +38,29 @@ func writeError(c *gin.Context, err error) {
 		return
 	}
 
+	msg := "Internal server error"
 	if isJSONRequest(c) {
-		c.JSON(http.StatusInternalServerError, e.Error())
+		c.JSON(http.StatusInternalServerError, msg)
 	} else {
-		c.String(http.StatusInternalServerError, "Internal server error")
+		c.String(http.StatusInternalServerError, msg)
 	}
 }
 
 // UpdateMetric обновляет метрику
 func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
+	// fmt.Printf("req: %+v\n", c.Request)
 
 	if isJSONRequest(c) {
 		var dto *entities.MetricDTO
 
 		err := json.NewDecoder(c.Request.Body).Decode(&dto)
 		if err != nil {
-			writeError(c, err)
+			writeError(c, errs.ErrBadRequest)
 			return
 		}
+
+		// fmt.Printf("dto: %+v\n", dto)
 
 		mType = dto.MType
 		mName = dto.ID

@@ -4,6 +4,7 @@ import "net/http"
 
 var (
 	ErrInternal           = NewError(http.StatusInternalServerError, "internal error")
+	ErrBadRequest         = NewError(http.StatusBadRequest, "bad request")
 	ErrMetricNotFound     = NewError(http.StatusNotFound, "metric not found")
 	ErrInvalidMetricType  = NewError(http.StatusBadRequest, "invalid metric type")
 	ErrInvalidMetricValue = NewError(http.StatusBadRequest, "invalid metric value")

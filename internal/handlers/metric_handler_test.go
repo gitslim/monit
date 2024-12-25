@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,7 @@ func TestUpdateMetrics(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
+	r.POST("/update/", metricHandler.UpdateMetric)
 
 	type metric struct {
 		typ   string
@@ -109,7 +111,7 @@ func TestUpdateMetrics(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name+":plain", func(t *testing.T) {
 			url := fmt.Sprintf("/update/%s/%s/%s", tt.metric.typ, tt.metric.name, tt.metric.value)
 			req, err := http.NewRequest(http.MethodPost, url, nil)
 			assert.NoError(t, err)
@@ -123,5 +125,23 @@ func TestUpdateMetrics(t *testing.T) {
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 		})
+		t.Run(tt.name+":json", func(t *testing.T) {
+			url := "/update/"
+			jsonData := fmt.Sprintf("{\"id\":\"%s\",\"type\":\"%s\",\"value\":%s}", tt.metric.name, tt.metric.typ, tt.metric.value)
+			assert.NoError(t, err)
+
+			req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(jsonData))
+			assert.NoError(t, err)
+
+			req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			res := w.Result()
+			res.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, res.StatusCode)
+		})
+
 	}
 }
