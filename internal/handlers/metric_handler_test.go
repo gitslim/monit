@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
@@ -155,7 +158,7 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 }
 
-func TestBatchUpdateMetrics(t *testing.T) {
+func TestBatchUpdateAndGetMetrics(t *testing.T) {
 	r, err := createServer()
 	require.NoError(t, err)
 
@@ -220,7 +223,6 @@ func TestBatchUpdateMetrics(t *testing.T) {
 			}
 		}
 		jsonData += "]"
-		fmt.Println(jsonData)
 
 		req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(jsonData))
 		assert.NoError(t, err)
@@ -234,4 +236,27 @@ func TestBatchUpdateMetrics(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
+	t.Run("GetMetric", func(t *testing.T) {
+		url := "/value/"
+		tt := tests[0]
+		jsonData := fmt.Sprintf("{\"id\":\"%s\",\"type\":\"%s\"}", tt.metric.name, tt.metric.typ)
+
+		req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(jsonData))
+		assert.NoError(t, err)
+
+		req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		res := w.Result()
+		var dto *entities.MetricDTO
+
+		err = json.NewDecoder(res.Body).Decode(&dto)
+		assert.NoError(t, err)
+		res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
+	})
+
 }
