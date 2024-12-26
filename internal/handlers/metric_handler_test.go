@@ -14,9 +14,10 @@ import (
 	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateMetrics(t *testing.T) {
+func createServer() (*gin.Engine, error) {
 	log, err := logging.NewLogger()
 	if err != nil {
 		log.Fatal("Failed init logger")
@@ -28,17 +29,21 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 
 	conf, err := services.WithMemStorage(context.Background(), log, cfg, make(chan<- error))
-	assert.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	metricService, err := services.NewMetricService(conf)
-	assert.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
-	metricHandler := NewMetricHandler(metricService)
+	return CreateGinEngine(cfg, log, gin.TestMode, metricService)
+}
 
-	gin.SetMode(gin.TestMode)
-	r := gin.Default()
-	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
-	r.POST("/update/", metricHandler.UpdateMetric)
+func TestUpdateMetrics(t *testing.T) {
+	r, err := createServer()
+	require.NoError(t, err)
 
 	type metric struct {
 		typ   string
@@ -151,27 +156,8 @@ func TestUpdateMetrics(t *testing.T) {
 }
 
 func TestBatchUpdateMetrics(t *testing.T) {
-	log, err := logging.NewLogger()
-	if err != nil {
-		log.Fatal("Failed init logger")
-	}
-	cfg := &conf.Config{
-		StoreInterval:   0,
-		FileStoragePath: "/tmp/.monit/memstorage.json",
-		Restore:         false,
-	}
-
-	conf, err := services.WithMemStorage(context.Background(), log, cfg, make(chan<- error))
-	assert.NoError(t, err)
-
-	metricService, err := services.NewMetricService(conf)
-	assert.NoError(t, err)
-
-	metricHandler := NewMetricHandler(metricService)
-
-	gin.SetMode(gin.TestMode)
-	r := gin.Default()
-	r.POST("/updates/", metricHandler.BatchUpdateMetrics)
+	r, err := createServer()
+	require.NoError(t, err)
 
 	type metric struct {
 		typ   string

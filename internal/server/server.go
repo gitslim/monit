@@ -11,38 +11,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
-	"github.com/gitslim/monit/internal/middleware"
 	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 )
 
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
-	// роутер
-	r := gin.New()
-
-	// gin.SetMode(gin.ReleaseMode)
-
-	// middlewares
-	r.Use(middleware.GzipMiddleware())
-	r.Use(middleware.LoggerMiddleware(log))
-	if cfg.Key != "" {
-		log.Debug("Using signature middleware")
-		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
+	// Gin engine handler
+	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
+	if err != nil {
+		panic("Creating gin engine failed")
 	}
 
+	// html шаблоны
+	// TODO: перенести в CreateGinEngine?
 	r.LoadHTMLGlob("templates/*")
-
-	// создание хендлера
-	metricHandler := handlers.NewMetricHandler(metricService)
-
-	// роуты
-	r.GET("/", metricHandler.ListMetrics)
-	r.POST("/update/", metricHandler.UpdateMetric)
-	r.POST("/updates/", metricHandler.BatchUpdateMetrics)
-	r.POST("/value/", metricHandler.GetMetric)
-	r.GET("/value/:type/:name", metricHandler.GetMetric)
-	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
-	r.GET("/ping", metricHandler.PingStorage)
 
 	// сервер
 	srv := &http.Server{
