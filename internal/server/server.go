@@ -17,14 +17,10 @@ import (
 
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
 	// Gin engine handler
-	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
+	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, "templates/*", metricService)
 	if err != nil {
 		panic("Creating gin engine failed")
 	}
-
-	// html шаблоны
-	// TODO: перенести в CreateGinEngine?
-	r.LoadHTMLGlob("templates/*")
 
 	// сервер
 	srv := &http.Server{

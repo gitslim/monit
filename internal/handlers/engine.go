@@ -8,7 +8,7 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
-func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metricService *services.MetricService) (*gin.Engine, error) {
+func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, templatesGlob string, metricService *services.MetricService) (*gin.Engine, error) {
 	// Gin engine
 	r := gin.New()
 
@@ -21,6 +21,8 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 		log.Debug("Using signature middleware")
 		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
 	}
+
+	r.LoadHTMLGlob(templatesGlob)
 
 	// создание хендлера
 	metricHandler := NewMetricHandler(metricService)

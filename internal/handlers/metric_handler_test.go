@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -41,7 +42,7 @@ func createServer() (*gin.Engine, error) {
 		return nil, err
 	}
 
-	return CreateGinEngine(cfg, log, gin.TestMode, metricService)
+	return CreateGinEngine(cfg, log, gin.ReleaseMode, "../../templates/*", metricService)
 }
 
 func TestUpdateMetrics(t *testing.T) {
@@ -158,7 +159,7 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 }
 
-func TestBatchUpdateAndGetMetrics(t *testing.T) {
+func TestBatchUpdateGetListMetrics(t *testing.T) {
 	r, err := createServer()
 	require.NoError(t, err)
 
@@ -236,7 +237,7 @@ func TestBatchUpdateAndGetMetrics(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
-	t.Run("GetMetric", func(t *testing.T) {
+	t.Run("Get", func(t *testing.T) {
 		url := "/value/"
 		tt := tests[0]
 		jsonData := fmt.Sprintf("{\"id\":\"%s\",\"type\":\"%s\"}", tt.metric.name, tt.metric.typ)
@@ -257,6 +258,24 @@ func TestBatchUpdateAndGetMetrics(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
+	})
+	t.Run("List", func(t *testing.T) {
+		url := "/"
+		tt := tests[0]
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.NoError(t, err)
+
+		req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypePlain)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		res := w.Result()
+		body, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+		res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Contains(t, string(body), tt.metric.name)
 	})
 
 }
