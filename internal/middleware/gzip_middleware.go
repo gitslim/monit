@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/httpconst"
@@ -40,32 +41,58 @@ func isRequestCompressed(c *gin.Context) bool {
 }
 
 func GzipMiddleware() gin.HandlerFunc {
+	gzipWriterPool := sync.Pool{
+		New: func() interface{} {
+			return gzip.NewWriter(nil)
+		},
+	}
+
+	gzipReaderPool := sync.Pool{
+		New: func() interface{} {
+			r, _ := gzip.NewReader(nil)
+			return r
+		},
+	}
+
+	var gzipResponseWriterPool = sync.Pool{
+		New: func() interface{} {
+			return &gzipResponseWriter{}
+		},
+	}
 	return func(c *gin.Context) {
 		if isRequestCompressed(c) {
-			gzReader, err := gzip.NewReader(c.Request.Body)
+			gzReader := gzipReaderPool.Get().(*gzip.Reader)
+			err := gzReader.Reset(c.Request.Body)
 			if err != nil {
 				fmt.Printf("Gzreader error: %v\n", err)
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
-			defer gzReader.Close()
+			defer func() {
+				gzReader.Close()
+				gzipReaderPool.Put(gzReader)
+			}()
 
 			c.Request.Body = io.NopCloser(gzReader)
 		}
 
 		if isCompressionAcceptable(c) && isContentTypeCompressable(c) {
-			// gzWriter := gzip.NewWriter(c.Writer)
-			gzWriter, err := gzip.NewWriterLevel(c.Writer, gzip.BestSpeed) // TODO: make shared writer with Reset()
-			if err != nil {
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			defer gzWriter.Close()
+			gzWriter := gzipWriterPool.Get().(*gzip.Writer)
+			gzWriter.Reset(c.Writer)
+			defer func() {
+				gzWriter.Close()
+				gzipWriterPool.Put(gzWriter)
+			}()
 
 			c.Header(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
-			c.Writer = &gzipResponseWriter{Writer: gzWriter, ResponseWriter: c.Writer}
-
+			gzResponseWriter := gzipResponseWriterPool.Get().(*gzipResponseWriter)
+			gzResponseWriter.Writer = gzWriter
+			gzResponseWriter.ResponseWriter = c.Writer
+			c.Writer = gzResponseWriter
+			defer func() {
+				gzipResponseWriterPool.Put(gzResponseWriter)
+			}()
 		}
 		c.Next()
 	}

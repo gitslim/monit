@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server"
 	"github.com/gitslim/monit/internal/server/conf"
@@ -59,6 +62,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Metric service initialization failed: %v", err)
 	}
+
+	// pprof server
+	go func() {
+		http.ListenAndServe(":8081", nil)
+	}()
 
 	// Запуск сервера
 	server.Start(ctx, cfg, log, metricService)
