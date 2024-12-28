@@ -30,7 +30,7 @@ func isRequestCompressed(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentEncoding) == httpconst.ContentEncodingGzip
 }
 
-// GzipMiddleware возвращает функцию-мидлварь для сжатия ответов gzip.
+// GzipMiddleware прозрачно управляет gzip-сжатием в зависимости от поддержки клиентом.
 func GzipMiddleware() gin.HandlerFunc {
 	// Создаем пул для ускорения работы gzip и уменьшения расхода памяти.
 	pool := NewGzipPool()
