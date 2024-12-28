@@ -1,27 +1,12 @@
 package middleware
 
 import (
-	"compress/gzip"
-	"fmt"
 	"io"
-	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/httpconst"
 )
-
-// gzipResponseWriter представляет ответ, который будет сжат gzip-компрессией
-type gzipResponseWriter struct {
-	gin.ResponseWriter
-	Writer io.Writer
-}
-
-// Write реализует интерфейс io.Writer
-func (w *gzipResponseWriter) Write(data []byte) (int, error) {
-	return w.Writer.Write(data)
-}
 
 // isCompressionAcceptable возвращает true, если клиент может принимать сжатый ответ
 func isCompressionAcceptable(c *gin.Context) bool {
@@ -47,62 +32,29 @@ func isRequestCompressed(c *gin.Context) bool {
 
 // GzipMiddleware возвращает функцию-мидлварь для сжатия ответов gzip
 func GzipMiddleware() gin.HandlerFunc {
-	// Создаем пулы для ускорения работы
-	gzipWriterPool := sync.Pool{
-		New: func() interface{} {
-			return gzip.NewWriter(nil)
-		},
-	}
+	// Создаем пул для ускорения работы gzip и уменьшения расхода памяти
+	pool := NewGzipPool()
 
-	gzipReaderPool := sync.Pool{
-		New: func() interface{} {
-			r, _ := gzip.NewReader(nil)
-			return r
-		},
-	}
-
-	var gzipResponseWriterPool = sync.Pool{
-		New: func() interface{} {
-			return &gzipResponseWriter{}
-		},
-	}
 	// возвращаем функцию-мидлварь
 	return func(c *gin.Context) {
 		if isRequestCompressed(c) {
-			fmt.Printf("c: %+v\n", c)
-			gzReader := gzipReaderPool.Get().(*gzip.Reader)
-			fmt.Printf("GZREADER: %v\n", gzReader)
-			err := gzReader.Reset(c.Request.Body)
-			if err != nil {
-				fmt.Printf("Gzreader error: %v\n", err)
-				c.AbortWithStatus(http.StatusBadRequest)
-				return
-			}
+			gzReader := pool.GetReader(c.Request.Body)
 			defer func() {
-				gzReader.Close()
-				gzipReaderPool.Put(gzReader)
+				pool.PutReader(gzReader)
 			}()
-
 			c.Request.Body = io.NopCloser(gzReader)
 		}
 
 		if isCompressionAcceptable(c) && isContentTypeCompressable(c) {
-			gzWriter := gzipWriterPool.Get().(*gzip.Writer)
-			gzWriter.Reset(c.Writer)
+			gzWriter := pool.GetWriter(c.Writer)
 			defer func() {
-				gzWriter.Close()
-				gzipWriterPool.Put(gzWriter)
+				pool.PutWriter(gzWriter)
 			}()
 
 			c.Header(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
-			gzResponseWriter := gzipResponseWriterPool.Get().(*gzipResponseWriter)
-			gzResponseWriter.Writer = gzWriter
-			gzResponseWriter.ResponseWriter = c.Writer
+			gzResponseWriter := pool.GetResponseWriter(gzWriter, c.Writer)
 			c.Writer = gzResponseWriter
-			defer func() {
-				gzipResponseWriterPool.Put(gzResponseWriter)
-			}()
 		}
 		c.Next()
 	}
