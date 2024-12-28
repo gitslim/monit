@@ -44,21 +44,21 @@ func main() {
 		}
 	} else {
 		log.Debug("Using memory storage")
-		backupErrChan := make(chan error)
-		metricConf, err = services.WithMemStorage(ctx, log, cfg, backupErrChan)
+		errCh := make(chan error)
+		metricConf, err = services.WithMemStorage(ctx, log, cfg, errCh)
 		if err != nil {
 			log.Fatalf("Memory storage configuration failed: %v", err)
 		}
 
 		// обработка ошибки бэкапа
 		go func() {
-			<-backupErrChan
+			<-errCh
 			cancel()
 		}()
 	}
 
 	// Инициализация сервиса метрик
-	metricService, err := services.NewMetricService(metricConf)
+	svc, err := services.NewMetricService(metricConf)
 	if err != nil {
 		log.Fatalf("Metric service initialization failed: %v", err)
 	}
@@ -69,5 +69,5 @@ func main() {
 	}()
 
 	// Запуск сервера
-	server.Start(ctx, cfg, log, metricService)
+	server.Start(ctx, cfg, log, svc)
 }

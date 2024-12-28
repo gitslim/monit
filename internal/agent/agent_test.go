@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestSendMetrics тестирует отправку метрик
 func TestSendMetrics(t *testing.T) {
 	client := &http.Client{}
 	dummyJSON, _ := json.Marshal(nil)
@@ -82,9 +83,6 @@ func TestSendMetrics(t *testing.T) {
 			if tt.marshalErr {
 				require.Error(t, err)
 			}
-			// else {
-			// 				assert.NoError(t, err)
-			// 			}
 
 			metrics := []*entities.MetricDTO{dto}
 			cfg := &conf.Config{Addr: server.URL}
@@ -93,9 +91,6 @@ func TestSendMetrics(t *testing.T) {
 			if tt.sendErr {
 				require.Error(t, err)
 			}
-			// else {
-			// 				assert.NoError(t, err)
-			// 			}
 
 			err = sender.SendMetrics(ctx, cfg, client, metrics, true)
 			if tt.sendErr {

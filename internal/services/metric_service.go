@@ -14,7 +14,7 @@ import (
 
 // MetricService сервис для работы с метриками
 type MetricService struct {
-	storage storage.Storage
+	storage storage.Storager
 }
 
 // MetricServiceConf конфиг для MetricService
@@ -34,7 +34,7 @@ func NewMetricService(cfgs ...MetricServiceConf) (*MetricService, error) {
 }
 
 // WithStorage конфигурирует MetricService с заданным заданный Storage
-func WithStorage(stor storage.Storage) MetricServiceConf {
+func WithStorage(stor storage.Storager) MetricServiceConf {
 	return func(svc *MetricService) error {
 		svc.storage = stor
 		return nil
@@ -65,7 +65,7 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, 
 	return WithStorage(stor), nil
 }
 
-// WithMemStorage конфигурирует MetricService c MemStorage
+// WithPGStorage конфигурирует MetricService c MemStorage
 func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (MetricServiceConf, error) {
 	pool, err := storage.CreateConnPool(cfg.DatabaseDSN)
 	if err != nil {
@@ -78,6 +78,7 @@ func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (
 	return WithStorage(stor), nil
 }
 
+// GetMetric получает метрику из хранилища по имени и типу
 func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, error) {
 	val, err := s.storage.GetMetric(mName, mType)
 	if err != nil {
@@ -86,6 +87,7 @@ func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, 
 	return val, nil
 }
 
+// UpdateMetric обновляет метрику
 func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	var v interface{}
 
@@ -118,14 +120,17 @@ func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	return s.storage.UpdateOrCreateMetric(mName, t, v)
 }
 
+// BatchUpdateMetrics обновляет метрики в хранилище батчами
 func (s *MetricService) BatchUpdateMetrics(metrics []*entities.MetricDTO) error {
 	return s.storage.BatchUpdateOrCreateMetrics(metrics)
 }
 
+// GetAllMetrics получает все метрики из хранилища
 func (s *MetricService) GetAllMetrics() (map[string]entities.Metric, error) {
 	return s.storage.GetAllMetrics()
 }
 
+// PingStorage проверяет соединение с хранилищем
 func (s *MetricService) PingStorage() error {
 	return s.storage.Ping()
 }

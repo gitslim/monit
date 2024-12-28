@@ -13,18 +13,24 @@ import (
 )
 
 func TestCollectMetrics(t *testing.T) {
+	// Создаем конфигурацию
 	cfg := &conf.Config{
 		PollInterval: 1,
 		RateLimit:    5,
 	}
 
+	// Канал сбора метрик
 	metricsCh := make(chan entities.MetricDTO, 100)
+
+	// Инициализация пула worker'ов
 	wp := worker.NewWorkerPool(cfg)
 	wp.Metrics = metricsCh
 
+	// Логгер
 	log, err := logging.NewLogger()
 	assert.NoError(t, err)
 
+	// Контекст с таймаутом
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -36,24 +42,27 @@ func TestCollectMetrics(t *testing.T) {
 		CollectSystemMetrics(ctx, log, wp)
 	})
 
-	// Завершаем сбор метрик
+	// Даем время на сбор метрик
 	time.Sleep(1 * time.Second)
-	cancel()
 
-	// Ждем завершения пула worker'ов
+	// Завершаем пул worker'ов
+	cancel()
 	wp.WaitClose()
 
-	collectedMetrics := make(map[string]bool)
+	// Забираем метрики из канала
+	collected := make(map[string]bool)
 	for metric := range metricsCh {
-		collectedMetrics[metric.ID] = true
+		collected[metric.ID] = true
 	}
 
-	expectedMetrics := []string{
+	// Список ожидаемых метрик
+	expected := []string{
 		"Alloc", "BuckHashSys", "HeapAlloc", "RandomValue", "PollCount",
 		"TotalMemory", "FreeMemory", "CPUutilization1",
 	}
 
-	for _, metricName := range expectedMetrics {
-		assert.Contains(t, collectedMetrics, metricName, "Metric %s should be collected", metricName)
+	// Проверяем что все метрики собрались
+	for _, metricName := range expected {
+		assert.Contains(t, collected, metricName, "Metric %s should be collected", metricName)
 	}
 }

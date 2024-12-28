@@ -19,6 +19,7 @@ import (
 //go:embed sql/*.sql
 var sqlFS embed.FS
 
+// Создаем переменные для хранения SQL-запросов
 var (
 	UpsertGaugeQuery   string
 	UpsertCounterQuery string
@@ -27,11 +28,12 @@ var (
 	GetAllMetricsQuery string
 )
 
+// PGStorage хранилище для PostgreSQL
 type PGStorage struct {
 	db *pgxpool.Pool
 }
 
-// loadQueries загружает SQL-запросы из файлов и присваивает их переменным.
+// loadQueries загружает SQL-запросы из файлов и присваивает их переменным
 func loadQueries() {
 	queries := map[string]*string{
 		"upsert_gauge.sql":    &UpsertGaugeQuery,
@@ -51,9 +53,11 @@ func loadQueries() {
 }
 
 func init() {
+	// загружаем SQL-запросы
 	loadQueries()
 }
 
+// MarshalJSON возвращает JSON-объект с метриками из хранилища
 func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
 
@@ -73,6 +77,7 @@ func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tmp)
 }
 
+// UnmarshalJSON обновляет значения метрик из JSON-объекта и сохраняет их в хранилище
 func (s *PGStorage) UnmarshalJSON(data []byte) error {
 	var temp map[string]json.RawMessage
 	if err := json.Unmarshal(data, &temp); err != nil {
@@ -109,6 +114,7 @@ func (s *PGStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NewPGStorage возвращает экземпляр хранилища с подключением к БД
 func NewPGStorage(pool *pgxpool.Pool) *PGStorage {
 	return &PGStorage{
 		db: pool,
@@ -243,7 +249,7 @@ func (s *PGStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	return metrics, nil
 }
 
-// Ping проверяет соединение с бд
+// Ping проверяет соединение с базой данных
 func (s *PGStorage) Ping() error {
 	if err := s.db.Ping(context.TODO()); err != nil {
 		return fmt.Errorf("postgres connection error: %w", err)
@@ -251,6 +257,7 @@ func (s *PGStorage) Ping() error {
 	return nil
 }
 
+// CreateConnPool создает пул соединений с базой данных
 func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 	// По дефолту запросы подготавливаются и кэшируются: default_query_exec_mode=cache_statement
 	config, err := pgxpool.ParseConfig(dsn)
@@ -274,7 +281,7 @@ func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// CreateMetricsTable создает таблицу для хранения метрик, если она не существует
+// CreatePGSchema создает таблицу metrics в базе данных
 func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 	query := `
     CREATE TABLE IF NOT EXISTS metrics (
@@ -292,6 +299,7 @@ func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 	return nil
 }
 
+// BatchUpdateOrCreateMetrics обновляет метрики в базе данных или создает их, если они не существуют
 func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
 	return retry.Retry(func() error {
 		ctx := context.TODO()

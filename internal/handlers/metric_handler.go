@@ -14,18 +14,22 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
+// MetricHandler представляет обработчик метрик
 type MetricHandler struct {
 	metricService services.MetricService
 }
 
+// NewMetricHandler создает обработчик метрик
 func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 	return &MetricHandler{metricService: *metricService}
 }
 
+// isJSONRequest проверяет является ли запрос JSON
 func isJSONRequest(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
+// writeError записывает ошибку в ответ сервера
 func writeError(c *gin.Context, err error) {
 	fmt.Printf("Error: %v\n", err)
 	var e *errs.Error
@@ -117,7 +121,7 @@ func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-// Получение метрики
+// GetMetric возвращает метрику по имени и типу
 func (h *MetricHandler) GetMetric(c *gin.Context) {
 	var mName, mType string
 
@@ -156,7 +160,7 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 	}
 }
 
-// HTML со списком метрик
+// ListMetrics возвращает список метрик в виде HTML-страницы
 func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	metrics, err := h.metricService.GetAllMetrics()
 	if err != nil {

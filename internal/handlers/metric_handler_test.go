@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// creatServer создает сервер для тестирования
 func createServer() (*gin.Engine, error) {
 	log, err := logging.NewLogger()
 	if err != nil {
@@ -45,6 +46,7 @@ func createServer() (*gin.Engine, error) {
 	return CreateGinEngine(cfg, log, gin.ReleaseMode, "../../templates/*", metricService)
 }
 
+// TestUpdateMetrics тестирует обновление метрик по одной
 func TestUpdateMetrics(t *testing.T) {
 	r, err := createServer()
 	require.NoError(t, err)
@@ -159,6 +161,7 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 }
 
+// TestBatchUpdateGetListMetrics тестирует пакетное обновление, получение значений метрик и их список.
 func TestBatchUpdateGetListMetrics(t *testing.T) {
 	r, err := createServer()
 	require.NoError(t, err)

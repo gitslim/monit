@@ -6,22 +6,22 @@ import (
 	"fmt"
 )
 
-// compressGzip - Сжатие данных методом gzip
+// compressGzip сжимает данные в gzip
 func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
-	gzWriter, err := gzip.NewWriterLevel(&buf, level)
+	w, err := gzip.NewWriterLevel(&buf, level)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
 	}
-	defer gzWriter.Close()
+	defer w.Close()
 
-	_, err = gzWriter.Write(data)
+	_, err = w.Write(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
 	}
 
-	if err := gzWriter.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		return nil, fmt.Errorf("failed to close gzip writer: %v", err)
 	}
 	return &buf, nil

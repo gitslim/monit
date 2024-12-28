@@ -8,6 +8,7 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
+// CreateGinEngine создает и настраивает Gin engine с использованием конфигурации, логгера, режима Gin и шаблонов HTML.
 func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, templatesGlob string, metricService *services.MetricService) (*gin.Engine, error) {
 	// Gin engine
 	r := gin.New()
@@ -22,6 +23,7 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, temp
 		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
 	}
 
+	// загрузка шаблонов HTML
 	r.LoadHTMLGlob(templatesGlob)
 
 	// создание хендлера

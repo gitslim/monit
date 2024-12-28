@@ -8,15 +8,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-type Config struct {
-	Addr            string `env:"ADDRESS"`
-	StoreInterval   uint64 `env:"STORE_INTERVAL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	Restore         bool   `env:"RESTORE"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-	Key             string `env:"KEY"`
-}
-
+// Значения по умолчанию для конфигурации
 const (
 	DefaultAddr            = "localhost:8080"
 	DefaultStoreInterval   = 300
@@ -26,6 +18,17 @@ const (
 	DefaultKey             = ""
 )
 
+// Config представляет конфигурацию сервера
+type Config struct {
+	Addr            string `env:"ADDRESS"`
+	StoreInterval   uint64 `env:"STORE_INTERVAL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Restore         bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
+}
+
+// ParseConfig парсит конфигурацию из флагов и переменных окружения
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
 	storeInterval := flag.Uint64("i", DefaultStoreInterval, "Интервал сохранения данных на диск (в секундах)")
@@ -45,19 +48,32 @@ func ParseConfig() (*Config, error) {
 		Key:             *key,
 	}
 
+	// парсинг конфига
 	err := env.Parse(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
 	}
 
 	// проверка конфига
-	if cfg.Addr == "" {
-		return nil, errors.New("адрес сервера не может быть пустым")
-	}
-
-	if cfg.FileStoragePath == "" {
-		return nil, errors.New("путь до файла сохранения данных не может быть пустым")
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
+
+}
+
+// valiadteConfig - проверка конфига на корректность
+func validateConfig(cfg *Config) error {
+
+	// проверка конфига
+	if cfg.Addr == "" {
+		return errors.New("адрес сервера не может быть пустым")
+	}
+
+	if cfg.FileStoragePath == "" {
+		return errors.New("путь до файла сохранения данных не может быть пустым")
+	}
+
+	return nil
 }

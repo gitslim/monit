@@ -14,7 +14,10 @@ import (
 
 // CollectSystemMetrics собирает метрики системной информации и отправляет их в канал wp.Metrics.
 func CollectSystemMetrics(ctx context.Context, log *logging.Logger, wp *worker.WorkerPool) {
+	// Таймер для периодического сбора метрик.
 	pollTicker := time.NewTicker(time.Duration(wp.Cfg.PollInterval * uint64(time.Second)))
+	defer pollTicker.Stop()
+
 	var metric *entities.MetricDTO
 
 	for {
@@ -22,6 +25,7 @@ func CollectSystemMetrics(ctx context.Context, log *logging.Logger, wp *worker.W
 		case <-ctx.Done():
 			return
 		case <-pollTicker.C:
+			// Данные виртуальной памяти
 			vMem, err := mem.VirtualMemory()
 			if err != nil {
 				log.Errorf("failed to get memory info: %v", err)
@@ -41,16 +45,19 @@ func CollectSystemMetrics(ctx context.Context, log *logging.Logger, wp *worker.W
 				}
 			}
 
+			// Данные утилизации процессора
 			cpuPercents, err := cpu.Percent(0, true)
 			if err != nil {
 				log.Errorf("failed to get CPU info: %v", err)
 			} else {
+				// Утилизация процессора по ядрам
 				for i, cpuPercent := range cpuPercents {
 					metricName := fmt.Sprintf("CPUutilization%d", i+1)
 					metric, err = entities.NewMetricDTO(metricName, "gauge", cpuPercent)
 					if err != nil {
 						log.Errorf("Failed to create gauge DTO: %v", metricName)
 					} else {
+						// Отправка метрики в канал
 						wp.Metrics <- *metric
 					}
 

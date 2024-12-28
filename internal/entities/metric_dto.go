@@ -6,6 +6,7 @@ import (
 	"github.com/gitslim/monit/internal/errs"
 )
 
+// MetricDTO содержит данные о метрике
 type MetricDTO struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -13,7 +14,8 @@ type MetricDTO struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func NewCounterMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
+// NewCounterMetricDTO создаёт новую метрику типа counter
+func NewCounterMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	value, err := strconv.ParseInt(mValue, 10, 64)
 	if err != nil {
 		return nil, errs.ErrInvalidMetricValue
@@ -21,12 +23,13 @@ func NewCounterMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
 
 	return &MetricDTO{
 		ID:    mName,
-		MType: mType,
+		MType: "counter",
 		Delta: &value,
 	}, nil
 }
 
-func NewGaugeMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
+// NewGaugeMetricDTO создаёт новую метрику типа gauge
+func NewGaugeMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	value, err := strconv.ParseFloat(mValue, 64)
 	if err != nil {
 		return nil, errs.ErrInvalidMetricValue
@@ -34,11 +37,12 @@ func NewGaugeMetricDTO(mName, mType, mValue string) (*MetricDTO, error) {
 
 	return &MetricDTO{
 		ID:    mName,
-		MType: mType,
+		MType: "gauge",
 		Value: &value,
 	}, nil
 }
 
+// NewMetricDTO создаёт новую метрику заданного типа
 func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 	t, err := GetMetricType(mType)
 	if err != nil {
@@ -53,7 +57,7 @@ func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 		if !ok {
 			return nil, errs.ErrInvalidMetricValue
 		}
-		dto, err := NewCounterMetricDTO(mName, mType, strconv.FormatInt(v, 10))
+		dto, err := NewCounterMetricDTO(mName, strconv.FormatInt(v, 10))
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +68,7 @@ func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 		if !ok {
 			return nil, errs.ErrInvalidMetricValue
 		}
-		dto, err := NewGaugeMetricDTO(mName, mType, strconv.FormatFloat(v, 'f', -1, 64))
+		dto, err := NewGaugeMetricDTO(mName, strconv.FormatFloat(v, 'f', -1, 64))
 		if err != nil {
 			return nil, err
 		}
@@ -75,11 +79,3 @@ func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 	}
 	return mDto, nil
 }
-
-// func (dto *MetricDTO) getValue() (float64, error) {
-// 	value, err := strconv.ParseFloat(dto.Value, 64)
-// 	if err != nil {
-// 		return nil, errs.ErrInvalidMetricValue
-// 	}
-// 	return value, nil
-// }

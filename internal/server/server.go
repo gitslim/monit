@@ -15,8 +15,9 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
+// Start запускает сервер
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
-	// Gin engine handler
+	// создание gin engine
 	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, "templates/*", metricService)
 	if err != nil {
 		panic("Creating gin engine failed")
@@ -28,7 +29,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 		Handler: r,
 	}
 
-	// запуск в отдельной горутине
+	// запуск сервера в горутине
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v\n", err)

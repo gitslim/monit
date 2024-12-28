@@ -10,7 +10,7 @@ import (
 	"github.com/gitslim/monit/internal/logging"
 )
 
-// Start - Запуск агента сбора метрик
+// Start запускает агент сбора метрик
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 	log.Info("Monit agent started")
 
@@ -19,7 +19,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 
 	// Запуск worker'ов отсылки метрик
 	wp.Start(func() {
-		sender.SendMetricsWorker(ctx, log, wp)
+		sender.RunSendMetricsWorker(ctx, log, wp)
 	})
 
 	// Добавление worker'ов сбора метрик
