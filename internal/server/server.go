@@ -1,3 +1,4 @@
+// Модуль server содержит логику создания и работы сервера метрик.
 package server
 
 import (
@@ -11,46 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
-	"github.com/gitslim/monit/internal/middleware"
 	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/services"
 )
 
+// Start запускает сервер.
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
-	// роутер
-	r := gin.New()
-
-	// gin.SetMode(gin.ReleaseMode)
-
-	// middlewares
-	r.Use(middleware.GzipMiddleware())
-	r.Use(middleware.LoggerMiddleware(log))
-	if cfg.Key != "" {
-		log.Debug("Using signature middleware")
-		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
+	// Создание gin engine.
+	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, "templates/*", metricService)
+	if err != nil {
+		panic("Creating gin engine failed")
 	}
 
-	r.LoadHTMLGlob("templates/*")
-
-	// создание хендлера
-	metricHandler := handlers.NewMetricHandler(metricService)
-
-	// роуты
-	r.GET("/", metricHandler.ListMetrics)
-	r.POST("/update/", metricHandler.UpdateMetric)
-	r.POST("/updates/", metricHandler.BatchUpdateMetrics)
-	r.POST("/value/", metricHandler.GetMetric)
-	r.GET("/value/:type/:name", metricHandler.GetMetric)
-	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
-	r.GET("/ping", metricHandler.PingStorage)
-
-	// сервер
+	// Создаем сервер.
 	srv := &http.Server{
 		Addr:    cfg.Addr,
 		Handler: r,
 	}
 
-	// запуск в отдельной горутине
+	// Запуск сервера в горутине.
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v\n", err)
@@ -59,21 +39,21 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 
 	log.Infof("Server is running on %v\n", cfg.Addr)
 
-	// Gracefull shutdown
-	// таймаут ожидания завершения
+	// Gracefull shutdown.
+	// Таймаут ожидания завершения работы сервера.
 	gracefulTimeout := 5 * time.Second
 
-	// Создаем контекст с тайм-аутом для завершения работы сервера
+	// Создаем контекст с тайм-аутом для завершения работы сервера.
 	ctx, cancel := context.WithTimeout(ctx, gracefulTimeout)
 	defer cancel()
 
-	// канал для получения сигналов
+	// Канал для получения сигналов.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Info("Shutting down server...")
 
-	// Инициируем graceful shutdown
+	// Инициируем graceful shutdown.
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown:", err)
 	}

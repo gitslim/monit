@@ -1,3 +1,4 @@
+// Модуль config создает конфигурацию агента сбора метрик, используя флаги, переменные окружения и значения по умолчанию.
 package conf
 
 import (
@@ -8,6 +9,16 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Значения по умолчанию для конфигурации.
+const (
+	DefaultAddr           = "localhost:8080"
+	DefaultPollInterval   = 2
+	DefaultReportInterval = 10
+	DefaultKey            = ""
+	DefaultRateLimit      = 10
+)
+
+// Config представляет конфигурацию агента сбора метрик.
 type Config struct {
 	Addr           string `env:"ADDRESS"`
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
@@ -16,12 +27,13 @@ type Config struct {
 	RateLimit      uint64 `env:"RATE_LIMIT"`
 }
 
+// ParseConfig парсит конфигурацию из флагов и переменных окружения.
 func ParseConfig() (*Config, error) {
-	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
-	pollInterval := flag.Uint64("p", 2, "Интервал сбора метрик (в секундах)")
-	reportInterval := flag.Uint64("r", 10, "Интервал отправки метрик на сервер (в секундах)")
-	key := flag.String("k", "", "Ключ шифрования")
-	rateLimit := flag.Uint64("l", 10, "Лимит одновременно исходящих запросов на отправку метрик")
+	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
+	pollInterval := flag.Uint64("p", DefaultPollInterval, "Интервал сбора метрик (в секундах)")
+	reportInterval := flag.Uint64("r", DefaultReportInterval, "Интервал отправки метрик на сервер (в секундах)")
+	key := flag.String("k", DefaultKey, "Ключ шифрования")
+	rateLimit := flag.Uint64("l", DefaultRateLimit, "Лимит одновременно исходящих запросов на отправку метрик")
 
 	flag.Parse()
 
@@ -33,26 +45,37 @@ func ParseConfig() (*Config, error) {
 		RateLimit:      *rateLimit,
 	}
 
+	// Парсинг конфига.
 	err := env.Parse(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
 	}
 
-	// проверка конфига
+	// проверка конфига.
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// valiadteConfig - проверка конфига на корректность.
+func validateConfig(cfg *Config) error {
 	if cfg.Addr == "" {
-		return nil, errors.New("адрес сервера не может быть пустым")
+		return errors.New("адрес сервера не может быть пустым")
 	}
 
 	if cfg.PollInterval == 0 {
-		return nil, errors.New("интервал сбора метрик не может быть равен 0")
+		return errors.New("интервал сбора метрик не может быть равен 0")
 	}
 
 	if cfg.ReportInterval == 0 {
-		return nil, errors.New("интервал отправки метрик на сервер не может быть равен 0")
+		return errors.New("интервал отправки метрик на сервер не может быть равен 0")
 	}
 
 	if cfg.RateLimit == 0 {
-		return nil, errors.New("лимит одновременно исходящих запросов на отправку метрик не может быть равен 0")
+		return errors.New("лимит одновременно исходящих запросов на отправку метрик не может быть равен 0")
 	}
-	return cfg, nil
+
+	return nil
 }

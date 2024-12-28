@@ -1,3 +1,4 @@
+// Модуль config создает конфигурацию сервера метрик, используя флаги, переменные окружения и значения по умолчанию.
 package conf
 
 import (
@@ -8,6 +9,17 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Значения по умолчанию для конфигурации.
+const (
+	DefaultAddr            = "localhost:8080"
+	DefaultStoreInterval   = 300
+	DefaultFileStoragePath = "/tmp/.monit/memstorage.json"
+	DefaultRestore         = true
+	DefaultDatabaseDSN     = ""
+	DefaultKey             = ""
+)
+
+// Config представляет конфигурацию сервера.
 type Config struct {
 	Addr            string `env:"ADDRESS"`
 	StoreInterval   uint64 `env:"STORE_INTERVAL"`
@@ -17,13 +29,14 @@ type Config struct {
 	Key             string `env:"KEY"`
 }
 
+// ParseConfig парсит конфигурацию из флагов и переменных окружения.
 func ParseConfig() (*Config, error) {
-	addr := flag.String("a", "localhost:8080", "Адрес сервера (в формате host:port)")
-	storeInterval := flag.Uint64("i", 300, "Интервал сохранения данных на диск (в секундах)")
-	fileStoragePath := flag.String("f", "/tmp/.monit/memstorage.json", "Путь до файла сохранения данных")
-	restore := flag.Bool("r", true, "Флаг загрузки сохраненных данных при старте сервера")
-	databaseDSN := flag.String("d", "", "Строка подключения к базе данных (DSN)")
-	key := flag.String("k", "", "Ключ шифрования")
+	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
+	storeInterval := flag.Uint64("i", DefaultStoreInterval, "Интервал сохранения данных на диск (в секундах)")
+	fileStoragePath := flag.String("f", DefaultFileStoragePath, "Путь до файла сохранения данных")
+	restore := flag.Bool("r", DefaultRestore, "Флаг загрузки сохраненных данных при старте сервера")
+	databaseDSN := flag.String("d", DefaultDatabaseDSN, "Строка подключения к базе данных (DSN)")
+	key := flag.String("k", DefaultKey, "Ключ шифрования")
 
 	flag.Parse()
 
@@ -36,19 +49,32 @@ func ParseConfig() (*Config, error) {
 		Key:             *key,
 	}
 
+	// Парсинг конфига.
 	err := env.Parse(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
 	}
 
-	// проверка конфига
-	if cfg.Addr == "" {
-		return nil, errors.New("адрес сервера не может быть пустым")
-	}
-
-	if cfg.FileStoragePath == "" {
-		return nil, errors.New("путь до файла сохранения данных не может быть пустым")
+	// Проверка конфига.
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
+
+}
+
+// valiadteConfig - проверка конфига на корректность.
+func validateConfig(cfg *Config) error {
+
+	// Проверка конфига.
+	if cfg.Addr == "" {
+		return errors.New("адрес сервера не может быть пустым")
+	}
+
+	if cfg.FileStoragePath == "" {
+		return errors.New("путь до файла сохранения данных не может быть пустым")
+	}
+
+	return nil
 }

@@ -14,20 +14,24 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
+// MetricHandler представляет обработчик метрик.
 type MetricHandler struct {
 	metricService services.MetricService
 }
 
+// NewMetricHandler создает обработчик метрик.
 func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 	return &MetricHandler{metricService: *metricService}
 }
 
+// isJSONRequest проверяет является ли запрос JSON.
 func isJSONRequest(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
+// writeError записывает ошибку в ответ сервера.
 func writeError(c *gin.Context, err error) {
-	fmt.Printf("GetMetric error: %v\n", err)
+	fmt.Printf("Error: %v\n", err)
 	var e *errs.Error
 	if errors.As(err, &e) {
 		if isJSONRequest(c) {
@@ -38,14 +42,15 @@ func writeError(c *gin.Context, err error) {
 		return
 	}
 
+	msg := "Internal server error"
 	if isJSONRequest(c) {
-		c.JSON(http.StatusInternalServerError, e.Error())
+		c.JSON(http.StatusInternalServerError, msg)
 	} else {
-		c.String(http.StatusInternalServerError, "Internal server error")
+		c.String(http.StatusInternalServerError, msg)
 	}
 }
 
-// UpdateMetric обновляет метрику
+// UpdateMetric обновляет метрику.
 func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
 
@@ -54,17 +59,20 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 
 		err := json.NewDecoder(c.Request.Body).Decode(&dto)
 		if err != nil {
-			writeError(c, err)
+			writeError(c, errs.ErrBadRequest)
 			return
 		}
 
 		mType = dto.MType
 		mName = dto.ID
 
-		if dto.Delta != nil {
+		if mType == "counter" && dto.Delta != nil {
 			mValue = strconv.FormatInt(*dto.Delta, 10)
-		} else if dto.Value != nil {
+		} else if mType == "gauge" && dto.Value != nil {
 			mValue = strconv.FormatFloat(*dto.Value, 'f', -1, 64)
+		} else {
+			writeError(c, errs.ErrBadRequest)
+			return
 		}
 
 	} else {
@@ -94,15 +102,16 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	}
 }
 
-// BatchUpdateMetrics обновляет метрики батчами
+// BatchUpdateMetrics обновляет метрики батчами.
 func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 	var metrics []*entities.MetricDTO
 
 	err := json.NewDecoder(c.Request.Body).Decode(&metrics)
 	if err != nil {
-		writeError(c, err)
+		writeError(c, fmt.Errorf("error decoding JSON: %w", err))
 		return
 	}
+	fmt.Printf("Metrics: %v\n", metrics)
 
 	if err := h.metricService.BatchUpdateMetrics(metrics); err != nil {
 		writeError(c, err)
@@ -112,7 +121,7 @@ func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-// Получение метрики
+// GetMetric возвращает метрику по имени и типу.
 func (h *MetricHandler) GetMetric(c *gin.Context) {
 	var mName, mType string
 
@@ -151,7 +160,7 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 	}
 }
 
-// HTML со списком метрик
+// ListMetrics возвращает список метрик в виде HTML-страницы.
 func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	metrics, err := h.metricService.GetAllMetrics()
 	if err != nil {
@@ -165,6 +174,7 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	c.HTML(http.StatusOK, "metrics.html", res)
 }
 
+// PingStorage проверяет соединение с хранилищем.
 func (h *MetricHandler) PingStorage(c *gin.Context) {
 	if err := h.metricService.PingStorage(); err != nil {
 		c.String(http.StatusInternalServerError, "error")

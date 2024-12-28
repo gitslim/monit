@@ -1,29 +1,19 @@
 package middleware
 
 import (
-	"compress/gzip"
-	"fmt"
 	"io"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/httpconst"
 )
 
-type gzipResponseWriter struct {
-	gin.ResponseWriter
-	Writer io.Writer
-}
-
-func (w *gzipResponseWriter) Write(data []byte) (int, error) {
-	return w.Writer.Write(data)
-}
-
+// isCompressionAcceptable возвращает true, если клиент может принимать сжатый ответ.
 func isCompressionAcceptable(c *gin.Context) bool {
 	return strings.Contains(c.GetHeader(httpconst.HeaderAcceptEncoding), httpconst.AcceptEncodingGzip) // TODO: better check
 }
 
+// isContentTypeCompressable возвращает true, если тип содержимого может быть сжат.
 func isContentTypeCompressable(c *gin.Context) bool {
 	supportedContentTypes := []string{httpconst.ContentTypeJSON, httpconst.ContentTypeHTML}
 	ct := c.GetHeader(httpconst.HeaderContentType)
@@ -35,37 +25,36 @@ func isContentTypeCompressable(c *gin.Context) bool {
 	return false
 }
 
+// isRequestCompressed возвращает true, если запрос сжат.
 func isRequestCompressed(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentEncoding) == httpconst.ContentEncodingGzip
 }
 
+// GzipMiddleware прозрачно управляет gzip-сжатием в зависимости от поддержки клиентом.
 func GzipMiddleware() gin.HandlerFunc {
+	// Создаем пул для ускорения работы gzip и уменьшения расхода памяти.
+	pool := NewGzipPool()
+
+	// Возвращаем функцию-мидлварь.
 	return func(c *gin.Context) {
 		if isRequestCompressed(c) {
-			gzReader, err := gzip.NewReader(c.Request.Body)
-			if err != nil {
-				fmt.Printf("Gzreader error: %v\n", err)
-				c.AbortWithStatus(http.StatusBadRequest)
-				return
-			}
-			defer gzReader.Close()
-
+			gzReader := pool.GetReader(c.Request.Body)
+			defer func() {
+				pool.PutReader(gzReader)
+			}()
 			c.Request.Body = io.NopCloser(gzReader)
 		}
 
 		if isCompressionAcceptable(c) && isContentTypeCompressable(c) {
-			// gzWriter := gzip.NewWriter(c.Writer)
-			gzWriter, err := gzip.NewWriterLevel(c.Writer, gzip.BestSpeed) // TODO: make shared writer with Reset()
-			if err != nil {
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			defer gzWriter.Close()
+			gzWriter := pool.GetWriter(c.Writer)
+			defer func() {
+				pool.PutWriter(gzWriter)
+			}()
 
 			c.Header(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
-			c.Writer = &gzipResponseWriter{Writer: gzWriter, ResponseWriter: c.Writer}
-
+			gzResponseWriter := pool.GetResponseWriter(gzWriter, c.Writer)
+			c.Writer = gzResponseWriter
 		}
 		c.Next()
 	}
