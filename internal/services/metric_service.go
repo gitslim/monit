@@ -1,3 +1,4 @@
+// Модуль services предоставляет сервисы для работы с метриками.
 package services
 
 import (

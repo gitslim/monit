@@ -1,3 +1,4 @@
+// Модуль httpconst определяет константы приложения.
 package httpconst
 
 // HTTP header keys.

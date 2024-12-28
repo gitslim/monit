@@ -1,3 +1,4 @@
+// Модуль worker управляет пулом worker'ов.
 package worker
 
 import (

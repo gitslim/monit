@@ -1,3 +1,4 @@
+// Модуль logging предназначен для управления логгированием.
 package logging
 
 import "go.uber.org/zap"

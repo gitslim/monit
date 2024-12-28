@@ -1,3 +1,4 @@
+// Модуль errs определяет ошибки приложения.
 package errs
 
 import "net/http"
