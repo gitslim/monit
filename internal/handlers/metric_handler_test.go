@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -280,5 +281,63 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Contains(t, string(body), tt.metric.name)
 	})
+
+}
+
+func ExampleMetricHandler_ListMetrics() {
+	r, err := createServer()
+	if err != nil {
+		panic("Cannoudn't create server: " + err.Error())
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/", nil)
+
+	r.ServeHTTP(w, req)
+
+	// Проверяем ответ.
+	if w.Code != http.StatusOK {
+		panic("Expected HTTP 200 OK")
+	}
+
+	println(w.Body.String())
+
+}
+
+func ExampleMetricHandler_UpdateMetric() {
+	r, err := createServer()
+	if err != nil {
+		panic("Cannoudn't create server: " + err.Error())
+	}
+
+	payload := `{"id":"Alloc","type":"gauge","value":12345.67}`
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/update/", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		panic("Expected HTTP 200 OK")
+	}
+
+}
+
+func ExampleMetricHandler_GetMetric() {
+	r, err := createServer()
+	if err != nil {
+		panic("Cannoudn't create server: " + err.Error())
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/value/gauge/Alloc", nil)
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		panic("Expected HTTP 200 OK")
+	}
+
+	println(w.Body.String())
 
 }

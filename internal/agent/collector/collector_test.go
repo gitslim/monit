@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TesCollectMetrics тестирует сбор метрик. 
+// TesCollectMetrics тестирует сбор метрик.
 func TestCollectMetrics(t *testing.T) {
 	// Создаем конфигурацию.
 	cfg := &conf.Config{
@@ -44,7 +44,7 @@ func TestCollectMetrics(t *testing.T) {
 	})
 
 	// Даем время на сбор метрик.
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// Завершаем пул worker'ов.
 	cancel()
