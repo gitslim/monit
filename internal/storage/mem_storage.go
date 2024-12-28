@@ -15,7 +15,7 @@ import (
 	"github.com/gitslim/monit/internal/logging"
 )
 
-// MemStorage хранилище метрик в памяти
+// MemStorage хранилище метрик в памяти.
 type MemStorage struct {
 	mu               sync.RWMutex
 	metrics          map[string]entities.Metric
@@ -23,7 +23,7 @@ type MemStorage struct {
 	backupWriter     io.Writer
 }
 
-// MarshalJSON сериализует данные в json
+// MarshalJSON сериализует данные в json.
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
 	for name, metric := range s.metrics {
@@ -36,7 +36,7 @@ func (s *MemStorage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tmp)
 }
 
-// UnmarshalJSON десериализует данные из json
+// UnmarshalJSON десериализует данные из json.
 func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	var temp map[string]json.RawMessage
 	if err := json.Unmarshal(data, &temp); err != nil {
@@ -70,7 +70,7 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// NewMemStorage - создает новое хранилище метрик в памяти
+// NewMemStorage - создает новое хранилище метрик в памяти.
 func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 	return &MemStorage{
 		metrics:          make(map[string]entities.Metric),
@@ -79,7 +79,7 @@ func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 	}
 }
 
-// UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее
+// UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее.
 func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricType, value interface{}) error {
 	var m entities.Metric
 
@@ -111,7 +111,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 	return nil
 }
 
-// GetMetric получает метрику по имени
+// GetMetric получает метрику по имени.
 func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -121,7 +121,7 @@ func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, err
 	return nil, errs.ErrMetricNotFound
 }
 
-// GetAllMetrics получает все метрики
+// GetAllMetrics получает все метрики.
 func (s *MemStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -129,7 +129,7 @@ func (s *MemStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	return s.metrics, nil
 }
 
-// LoadFromFile загружает данные из файла в хранилище
+// LoadFromFile загружает данные из файла в хранилище.
 func (s *MemStorage) LoadFromFile(filename string) error {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		return err
@@ -153,7 +153,7 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 	return nil
 }
 
-// WriteBackup сохраняет данные хранилища в файл
+// WriteBackup сохраняет данные хранилища в файл.
 func (s *MemStorage) WriteBackup(w io.Writer) error {
 	s.mu.RLock()
 	data, err := json.Marshal(&s)
@@ -163,12 +163,12 @@ func (s *MemStorage) WriteBackup(w io.Writer) error {
 	}
 
 	if file, ok := w.(*os.File); ok {
-		// очищаем файл
+		// Очищаем файл.
 		if err := file.Truncate(0); err != nil {
 			return err
 		}
 
-		// переходим в начало
+		// Переходим в начало.
 		if _, err := file.Seek(0, 0); err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func (s *MemStorage) WriteBackup(w io.Writer) error {
 	return err
 }
 
-// StartPeriodicBackup запускает периодическое сохранение данных в файл на диске
+// StartPeriodicBackup запускает периодическое сохранение данных в файл на диске.
 func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logger, fd *os.File, interval time.Duration, errChan chan<- error) {
 	defer fd.Close()
 
@@ -197,7 +197,7 @@ func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logge
 	}
 }
 
-// CreateBackupFile создает файл для записи файла бэкапа
+// CreateBackupFile создает файл для записи файла бэкапа.
 func CreateBackupFile(filePath string) (*os.File, error) {
 	dir := filepath.Dir(filePath)
 	if dir != "" {
@@ -214,11 +214,12 @@ func CreateBackupFile(filePath string) (*os.File, error) {
 	return fd, nil
 }
 
+// Ping проверяет соединение с хранилищем.
 func (s *MemStorage) Ping() error {
 	return nil
 }
 
-// BatchUpdateOrCreateMetrics обновляет данные в хранилище батчами
+// BatchUpdateOrCreateMetrics обновляет данные в хранилище батчами.
 func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
 	for _, dto := range metrics {
 

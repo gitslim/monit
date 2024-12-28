@@ -19,7 +19,7 @@ import (
 //go:embed sql/*.sql
 var sqlFS embed.FS
 
-// Создаем переменные для хранения SQL-запросов
+// Создаем переменные для хранения SQL-запросов.
 var (
 	UpsertGaugeQuery   string
 	UpsertCounterQuery string
@@ -28,12 +28,12 @@ var (
 	GetAllMetricsQuery string
 )
 
-// PGStorage хранилище для PostgreSQL
+// PGStorage хранилище для PostgreSQL.
 type PGStorage struct {
 	db *pgxpool.Pool
 }
 
-// loadQueries загружает SQL-запросы из файлов и присваивает их переменным
+// loadQueries загружает SQL-запросы из файлов и присваивает их переменным.
 func loadQueries() {
 	queries := map[string]*string{
 		"upsert_gauge.sql":    &UpsertGaugeQuery,
@@ -53,11 +53,11 @@ func loadQueries() {
 }
 
 func init() {
-	// загружаем SQL-запросы
+	// Загружаем SQL-запросы.
 	loadQueries()
 }
 
-// MarshalJSON возвращает JSON-объект с метриками из хранилища
+// MarshalJSON возвращает JSON-объект с метриками из хранилища.
 func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
 
@@ -77,7 +77,7 @@ func (s *PGStorage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tmp)
 }
 
-// UnmarshalJSON обновляет значения метрик из JSON-объекта и сохраняет их в хранилище
+// UnmarshalJSON обновляет значения метрик из JSON-объекта и сохраняет их в хранилище.
 func (s *PGStorage) UnmarshalJSON(data []byte) error {
 	var temp map[string]json.RawMessage
 	if err := json.Unmarshal(data, &temp); err != nil {
@@ -114,14 +114,14 @@ func (s *PGStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// NewPGStorage возвращает экземпляр хранилища с подключением к БД
+// NewPGStorage возвращает экземпляр хранилища с подключением к базе данных.
 func NewPGStorage(pool *pgxpool.Pool) *PGStorage {
 	return &PGStorage{
 		db: pool,
 	}
 }
 
-// UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее (Upsert)
+// UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее (Upsert).
 func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.MetricType, value interface{}) error {
 	return retry.Retry(func() error {
 		ctx := context.Background()
@@ -144,7 +144,6 @@ func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.Metric
 			}
 			_, err := s.db.Exec(ctx, UpsertCounterQuery, name, metricType.String(), v)
 			if err != nil {
-				//			fmt.Printf("db error: %v", err)
 				return errs.ErrInternal
 			}
 
@@ -156,7 +155,7 @@ func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.Metric
 	}, 3)
 }
 
-// GetMetric получает метрику по имени
+// GetMetric получает метрику по имени.
 func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
 	ctx := context.Background()
 
@@ -195,7 +194,7 @@ func (s *PGStorage) GetMetric(mName string, mType string) (entities.Metric, erro
 	}
 }
 
-// GetAllMetrics получает все метрики
+// GetAllMetrics получает все метрики.
 func (s *PGStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	ctx := context.Background()
 
@@ -249,7 +248,7 @@ func (s *PGStorage) GetAllMetrics() (map[string]entities.Metric, error) {
 	return metrics, nil
 }
 
-// Ping проверяет соединение с базой данных
+// Ping проверяет соединение с базой данных.
 func (s *PGStorage) Ping() error {
 	if err := s.db.Ping(context.TODO()); err != nil {
 		return fmt.Errorf("postgres connection error: %w", err)
@@ -257,7 +256,7 @@ func (s *PGStorage) Ping() error {
 	return nil
 }
 
-// CreateConnPool создает пул соединений с базой данных
+// CreateConnPool создает пул соединений с базой данных.
 func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 	// По дефолту запросы подготавливаются и кэшируются: default_query_exec_mode=cache_statement
 	config, err := pgxpool.ParseConfig(dsn)
@@ -265,12 +264,12 @@ func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to parse postgres database dsn: %w", err)
 	}
 
-	// настройка пула
+	// Настройка пула.
 	config.MaxConns = 10
 	config.MinConns = 2
 	config.MaxConnIdleTime = 5 * time.Minute
 
-	// Подключение к бд
+	// Подключение к базе данных.
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed create postgres connection pool: %w", err)
@@ -281,7 +280,7 @@ func CreateConnPool(dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// CreatePGSchema создает таблицу metrics в базе данных
+// CreatePGSchema создает таблицу metrics в базе данных.
 func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 	query := `
     CREATE TABLE IF NOT EXISTS metrics (
@@ -299,17 +298,17 @@ func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 	return nil
 }
 
-// BatchUpdateOrCreateMetrics обновляет метрики в базе данных или создает их, если они не существуют
+// BatchUpdateOrCreateMetrics обновляет метрики в базе данных или создает их, если они не существуют.
 func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
 	return retry.Retry(func() error {
 		ctx := context.TODO()
 
-		// Начинаем транзакцию
+		// Начинаем транзакцию.
 		tx, err := s.db.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
-		// В случае ошибки откатываем транзакцию
+		// В случае ошибки откатываем транзакцию.
 		defer func() {
 			if err != nil {
 				_ = tx.Rollback(ctx)
@@ -339,7 +338,7 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 			}
 
 		}
-		// Коммитим транзакцию при успешном завершении
+		// Коммитим транзакцию при успешном завершении.
 		err = tx.Commit(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to commit transaction: %w", err)

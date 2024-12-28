@@ -8,7 +8,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-// Значения по умолчанию для конфигурации
+// Значения по умолчанию для конфигурации.
 const (
 	DefaultAddr           = "localhost:8080"
 	DefaultPollInterval   = 2
@@ -17,7 +17,7 @@ const (
 	DefaultRateLimit      = 10
 )
 
-// Config представляет конфигурацию агента сбора метрик
+// Config представляет конфигурацию агента сбора метрик.
 type Config struct {
 	Addr           string `env:"ADDRESS"`
 	PollInterval   uint64 `env:"POLL_INTERVAL"`
@@ -26,7 +26,7 @@ type Config struct {
 	RateLimit      uint64 `env:"RATE_LIMIT"`
 }
 
-// ParseConfig парсит конфигурацию из флагов и переменных окружения
+// ParseConfig парсит конфигурацию из флагов и переменных окружения.
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
 	pollInterval := flag.Uint64("p", DefaultPollInterval, "Интервал сбора метрик (в секундах)")
@@ -44,13 +44,13 @@ func ParseConfig() (*Config, error) {
 		RateLimit:      *rateLimit,
 	}
 
-	// Парсинг конфига
+	// Парсинг конфига.
 	err := env.Parse(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
 	}
 
-	// проверка конфига
+	// проверка конфига.
 	if err := validateConfig(cfg); err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func ParseConfig() (*Config, error) {
 	return cfg, nil
 }
 
-// valiadteConfig - проверка конфига на корректность
+// valiadteConfig - проверка конфига на корректность.
 func validateConfig(cfg *Config) error {
 	if cfg.Addr == "" {
 		return errors.New("адрес сервера не может быть пустым")

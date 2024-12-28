@@ -1,6 +1,6 @@
 package httpconst
 
-// HTTP header keys
+// HTTP header keys.
 const (
 	HeaderContentType     = "Content-Type"
 	HeaderContentEncoding = "Content-Encoding"
@@ -10,7 +10,7 @@ const (
 	HeaderHashSHA256      = "HashSHA256"
 )
 
-// HTTP header values
+// HTTP header values.
 const (
 	// Content-Type: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
 	ContentTypePlain = "text/plain"

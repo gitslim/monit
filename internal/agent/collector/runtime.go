@@ -13,7 +13,7 @@ import (
 
 // CollectRuntimeMetrics собирает метрики информации о системе и отправляет их в канал wp.Metrics.
 func CollectRuntimeMetrics(ctx context.Context, log *logging.Logger, wp *worker.WorkerPool) {
-	// Таймер для периодического сбора метрик
+	// Таймер для периодического сбора метрик.
 	pollTicker := time.NewTicker(time.Duration(wp.Cfg.PollInterval * uint64(time.Second)))
 	defer pollTicker.Stop()
 
@@ -24,10 +24,10 @@ func CollectRuntimeMetrics(ctx context.Context, log *logging.Logger, wp *worker.
 		case <-ctx.Done():
 			return
 		case <-pollTicker.C:
-			// Сбор статистики памяти
+			// Сбор статистики памяти.
 			runtime.ReadMemStats(&memStats)
 
-			// Подготовка gauges
+			// Подготовка gauges.
 			gauges := map[string]float64{
 				"Alloc":         float64(memStats.Alloc),
 				"BuckHashSys":   float64(memStats.BuckHashSys),
@@ -58,10 +58,10 @@ func CollectRuntimeMetrics(ctx context.Context, log *logging.Logger, wp *worker.
 				"TotalAlloc":    float64(memStats.TotalAlloc),
 			}
 
-			// Добавляем случайное значение RandomValue
+			// Добавляем случайное значение RandomValue.
 			gauges["RandomValue"] = rand.Float64()
 
-			// Отправка gauges в канал
+			// Отправка gauges в канал.
 			for k, v := range gauges {
 				gauge, err := entities.NewMetricDTO(k, "gauge", v)
 				if err != nil {
@@ -71,7 +71,7 @@ func CollectRuntimeMetrics(ctx context.Context, log *logging.Logger, wp *worker.
 				}
 			}
 			
-			// Отправка counter в канал
+			// Отправка counter в канал.
 			counter, err := entities.NewMetricDTO("PollCount", "counter", int64(1))
 			if err != nil {
 				log.Error("Failed to create counter DTO: PollCount")

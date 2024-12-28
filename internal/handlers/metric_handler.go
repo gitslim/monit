@@ -14,22 +14,22 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
-// MetricHandler представляет обработчик метрик
+// MetricHandler представляет обработчик метрик.
 type MetricHandler struct {
 	metricService services.MetricService
 }
 
-// NewMetricHandler создает обработчик метрик
+// NewMetricHandler создает обработчик метрик.
 func NewMetricHandler(metricService *services.MetricService) *MetricHandler {
 	return &MetricHandler{metricService: *metricService}
 }
 
-// isJSONRequest проверяет является ли запрос JSON
+// isJSONRequest проверяет является ли запрос JSON.
 func isJSONRequest(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentType) == httpconst.ContentTypeJSON
 }
 
-// writeError записывает ошибку в ответ сервера
+// writeError записывает ошибку в ответ сервера.
 func writeError(c *gin.Context, err error) {
 	fmt.Printf("Error: %v\n", err)
 	var e *errs.Error
@@ -50,7 +50,7 @@ func writeError(c *gin.Context, err error) {
 	}
 }
 
-// UpdateMetric обновляет метрику
+// UpdateMetric обновляет метрику.
 func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
 
@@ -102,7 +102,7 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	}
 }
 
-// BatchUpdateMetrics обновляет метрики батчами
+// BatchUpdateMetrics обновляет метрики батчами.
 func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 	var metrics []*entities.MetricDTO
 
@@ -121,7 +121,7 @@ func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-// GetMetric возвращает метрику по имени и типу
+// GetMetric возвращает метрику по имени и типу.
 func (h *MetricHandler) GetMetric(c *gin.Context) {
 	var mName, mType string
 
@@ -160,7 +160,7 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 	}
 }
 
-// ListMetrics возвращает список метрик в виде HTML-страницы
+// ListMetrics возвращает список метрик в виде HTML-страницы.
 func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	metrics, err := h.metricService.GetAllMetrics()
 	if err != nil {
@@ -174,6 +174,7 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	c.HTML(http.StatusOK, "metrics.html", res)
 }
 
+// PingStorage проверяет соединение с хранилищем.
 func (h *MetricHandler) PingStorage(c *gin.Context) {
 	if err := h.metricService.PingStorage(); err != nil {
 		c.String(http.StatusInternalServerError, "error")

@@ -18,7 +18,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Инициализация логгера
+	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
 		// Логгер еще недоступен поэтому fmt...
@@ -26,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Парсинг конфига
+	// Парсинг конфига.
 	cfg, err := conf.ParseConfig()
 	if err != nil {
 		log.Fatalf("Config parse failed: %v", err)
@@ -34,7 +34,7 @@ func main() {
 
 	log.Debugf("Server config: %+v", cfg)
 
-	// Инициализация хранилища
+	// Инициализация хранилища.
 	var metricConf services.MetricServiceConf
 	if cfg.DatabaseDSN != "" {
 		log.Debug("Using postgres storage")
@@ -50,24 +50,24 @@ func main() {
 			log.Fatalf("Memory storage configuration failed: %v", err)
 		}
 
-		// обработка ошибки бэкапа
+		// Обработка ошибки бэкапа.
 		go func() {
 			<-errCh
 			cancel()
 		}()
 	}
 
-	// Инициализация сервиса метрик
+	// Инициализация сервиса метрик.
 	svc, err := services.NewMetricService(metricConf)
 	if err != nil {
 		log.Fatalf("Metric service initialization failed: %v", err)
 	}
 
-	// pprof server
+	// Запуск pprof сервера.
 	go func() {
 		http.ListenAndServe(":8081", nil)
 	}()
 
-	// Запуск сервера
+	// Запуск сервера.
 	server.Start(ctx, cfg, log, svc)
 }

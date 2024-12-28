@@ -8,12 +8,12 @@ import (
 	"github.com/gitslim/monit/internal/httpconst"
 )
 
-// isCompressionAcceptable возвращает true, если клиент может принимать сжатый ответ
+// isCompressionAcceptable возвращает true, если клиент может принимать сжатый ответ.
 func isCompressionAcceptable(c *gin.Context) bool {
 	return strings.Contains(c.GetHeader(httpconst.HeaderAcceptEncoding), httpconst.AcceptEncodingGzip) // TODO: better check
 }
 
-// isContentTypeCompressable возвращает true, если тип содержимого может быть сжат
+// isContentTypeCompressable возвращает true, если тип содержимого может быть сжат.
 func isContentTypeCompressable(c *gin.Context) bool {
 	supportedContentTypes := []string{httpconst.ContentTypeJSON, httpconst.ContentTypeHTML}
 	ct := c.GetHeader(httpconst.HeaderContentType)
@@ -25,17 +25,17 @@ func isContentTypeCompressable(c *gin.Context) bool {
 	return false
 }
 
-// isRequestCompressed возвращает true, если запрос сжат
+// isRequestCompressed возвращает true, если запрос сжат.
 func isRequestCompressed(c *gin.Context) bool {
 	return c.GetHeader(httpconst.HeaderContentEncoding) == httpconst.ContentEncodingGzip
 }
 
-// GzipMiddleware возвращает функцию-мидлварь для сжатия ответов gzip
+// GzipMiddleware возвращает функцию-мидлварь для сжатия ответов gzip.
 func GzipMiddleware() gin.HandlerFunc {
-	// Создаем пул для ускорения работы gzip и уменьшения расхода памяти
+	// Создаем пул для ускорения работы gzip и уменьшения расхода памяти.
 	pool := NewGzipPool()
 
-	// возвращаем функцию-мидлварь
+	// Возвращаем функцию-мидлварь.
 	return func(c *gin.Context) {
 		if isRequestCompressed(c) {
 			gzReader := pool.GetReader(c.Request.Body)

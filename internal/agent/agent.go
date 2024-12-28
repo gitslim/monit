@@ -10,19 +10,19 @@ import (
 	"github.com/gitslim/monit/internal/logging"
 )
 
-// Start запускает агент сбора метрик
+// Start запускает агент сбора метрик.
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 	log.Info("Monit agent started")
 
-	// Создание пула worker'ов
+	// Создание пула worker'ов.
 	wp := worker.NewWorkerPool(cfg)
 
-	// Запуск worker'ов отсылки метрик
+	// Запуск worker'ов отсылки метрик.
 	wp.Start(func() {
 		sender.RunSendMetricsWorker(ctx, log, wp)
 	})
 
-	// Добавление worker'ов сбора метрик
+	// Добавление worker'ов сбора метрик.
 	wp.AddWorker(func() {
 		collector.CollectRuntimeMetrics(ctx, log, wp)
 	})
@@ -30,6 +30,6 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger) {
 		collector.CollectSystemMetrics(ctx, log, wp)
 	})
 
-	// Ожидание завершения пула worker'ов
+	// Ожидание завершения пула worker'ов.
 	wp.WaitClose()
 }

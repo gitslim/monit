@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSendMetrics тестирует отправку метрик
+// TestSendMetrics тестирует отправку метрик.
 func TestSendMetrics(t *testing.T) {
 	client := &http.Client{}
 	dummyJSON, _ := json.Marshal(nil)

@@ -11,13 +11,13 @@ import (
 	"github.com/gitslim/monit/internal/logging"
 )
 
-// signatureResponseWriter представляет собой обертку над gin.ResponseWriter, которая добавляет хэш SHA-256 в заголовок ответа
+// signatureResponseWriter представляет собой обертку над gin.ResponseWriter, которая добавляет хэш SHA-256 в заголовок ответа.
 type signatureResponseWriter struct {
 	gin.ResponseWriter
 	key string
 }
 
-// Write реализует интерфейс gin.ResponseWriter
+// Write реализует интерфейс gin.ResponseWriter.
 func (w *signatureResponseWriter) Write(data []byte) (int, error) {
 	respHash, err := makeHash(&data, w.key)
 	if err != nil {
@@ -27,10 +27,10 @@ func (w *signatureResponseWriter) Write(data []byte) (int, error) {
 	return w.ResponseWriter.Write(data)
 }
 
-// SignatureMiddleware добавляет хэш SHA-256 в заголовок ответа, если он указан в запросе
+// SignatureMiddleware добавляет хэш SHA-256 в заголовок ответа, если он указан в запросе.
 func SignatureMiddleware(log *logging.Logger, key string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// проверяем наличие хэша SHA-256 в заголовке запроса
+		// Проверяем наличие хэша SHA-256 в заголовке запроса.
 		headerHash := c.GetHeader(httpconst.HeaderHashSHA256)
 		if headerHash != "" {
 			var buf []byte
@@ -54,7 +54,7 @@ func SignatureMiddleware(log *logging.Logger, key string) gin.HandlerFunc {
 	}
 }
 
-// makeHash вычисляет хэш для данных по алгоритму SHA256
+// makeHash вычисляет хэш для данных по алгоритму SHA256.
 func makeHash(buf *[]byte, key string) (string, error) {
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write(*buf)

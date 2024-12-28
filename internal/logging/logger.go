@@ -2,12 +2,12 @@ package logging
 
 import "go.uber.org/zap"
 
-// Logger представляет собой логгер, который использует библиотеку zap
+// Logger представляет собой логгер, который использует библиотеку zap.
 type Logger struct {
 	sugar *zap.SugaredLogger
 }
 
-// NewLogger создает новый логгер
+// NewLogger создает новый логгер.
 func NewLogger() (*Logger, error) {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -20,7 +20,7 @@ func NewLogger() (*Logger, error) {
 	return &Logger{sugar: sugar}, nil
 }
 
-// Close закрывает логгер
+// Close закрывает логгер.
 func (l *Logger) Close() {
 	l.sugar.Sync()
 }

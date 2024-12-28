@@ -7,7 +7,7 @@ import (
 	"github.com/gitslim/monit/internal/logging"
 )
 
-// LoggerMiddleware логгирует запросы и ответы, вычисляет время выполнения запроса и размер ответа
+// LoggerMiddleware логгирует запросы и ответы, вычисляет время выполнения запроса и размер ответа.
 func LoggerMiddleware(log *logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -16,7 +16,7 @@ func LoggerMiddleware(log *logging.Logger) gin.HandlerFunc {
 
 		latency := time.Since(start)
 
-		// логируем запрос
+		// Логгируем запрос.
 		log.Info("req",
 			"URI", c.Request.RequestURI,
 			"method", c.Request.Method,
@@ -24,7 +24,7 @@ func LoggerMiddleware(log *logging.Logger) gin.HandlerFunc {
 
 		status := c.Writer.Status()
 		size := c.Writer.Size()
-		// логируем ответ
+		// Логгируем ответ.
 		log.Info("res",
 			"status", status,
 			"size", size)

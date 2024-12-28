@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// compressGzip сжимает данные в gzip
+// compressGzip сжимает данные в gzip.
 func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 

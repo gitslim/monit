@@ -8,7 +8,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-// Значения по умолчанию для конфигурации
+// Значения по умолчанию для конфигурации.
 const (
 	DefaultAddr            = "localhost:8080"
 	DefaultStoreInterval   = 300
@@ -18,7 +18,7 @@ const (
 	DefaultKey             = ""
 )
 
-// Config представляет конфигурацию сервера
+// Config представляет конфигурацию сервера.
 type Config struct {
 	Addr            string `env:"ADDRESS"`
 	StoreInterval   uint64 `env:"STORE_INTERVAL"`
@@ -28,7 +28,7 @@ type Config struct {
 	Key             string `env:"KEY"`
 }
 
-// ParseConfig парсит конфигурацию из флагов и переменных окружения
+// ParseConfig парсит конфигурацию из флагов и переменных окружения.
 func ParseConfig() (*Config, error) {
 	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
 	storeInterval := flag.Uint64("i", DefaultStoreInterval, "Интервал сохранения данных на диск (в секундах)")
@@ -48,13 +48,13 @@ func ParseConfig() (*Config, error) {
 		Key:             *key,
 	}
 
-	// парсинг конфига
+	// Парсинг конфига.
 	err := env.Parse(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка парсинга конфигурации: %w", err)
 	}
 
-	// проверка конфига
+	// Проверка конфига.
 	if err := validateConfig(cfg); err != nil {
 		return nil, err
 	}
@@ -63,10 +63,10 @@ func ParseConfig() (*Config, error) {
 
 }
 
-// valiadteConfig - проверка конфига на корректность
+// valiadteConfig - проверка конфига на корректность.
 func validateConfig(cfg *Config) error {
 
-	// проверка конфига
+	// Проверка конфига.
 	if cfg.Addr == "" {
 		return errors.New("адрес сервера не может быть пустым")
 	}

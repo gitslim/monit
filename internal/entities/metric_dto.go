@@ -6,7 +6,7 @@ import (
 	"github.com/gitslim/monit/internal/errs"
 )
 
-// MetricDTO содержит данные о метрике
+// MetricDTO содержит данные о метрике.
 type MetricDTO struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -14,7 +14,7 @@ type MetricDTO struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-// NewCounterMetricDTO создаёт новую метрику типа counter
+// NewCounterMetricDTO создаёт новую метрику типа counter.
 func NewCounterMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	value, err := strconv.ParseInt(mValue, 10, 64)
 	if err != nil {
@@ -28,7 +28,7 @@ func NewCounterMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	}, nil
 }
 
-// NewGaugeMetricDTO создаёт новую метрику типа gauge
+// NewGaugeMetricDTO создаёт новую метрику типа gauge.
 func NewGaugeMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	value, err := strconv.ParseFloat(mValue, 64)
 	if err != nil {
@@ -42,7 +42,7 @@ func NewGaugeMetricDTO(mName, mValue string) (*MetricDTO, error) {
 	}, nil
 }
 
-// NewMetricDTO создаёт новую метрику заданного типа
+// NewMetricDTO создаёт новую метрику заданного типа.
 func NewMetricDTO(mName, mType string, mValue any) (*MetricDTO, error) {
 	t, err := GetMetricType(mType)
 	if err != nil {

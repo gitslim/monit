@@ -14,7 +14,7 @@ import (
 	"github.com/gitslim/monit/internal/retry"
 )
 
-// sendJSON отправляет метрики в формате JSON батчем или по одной
+// sendJSON отправляет метрики в формате JSON батчем или по одной.
 func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url string, jsonData []byte) error {
 	// Сжимаем данные в gzip
 	buf, err := compressGzip(jsonData, gzip.BestSpeed)
@@ -22,7 +22,7 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 		return fmt.Errorf("failed to compress with gzip: %v", err)
 	}
 
-	// Таймаут запроса
+	// Таймаут запроса.
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -34,7 +34,7 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 	req.Header.Set(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
 	req.Header.Set(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
-	// Если заданк ключ, подписываем данные
+	// Если заданк ключ, подписываем данные.
 	if cfg.Key != "" {
 		body, err := req.GetBody()
 		if err != nil {
@@ -60,18 +60,18 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 	return nil
 }
 
-// SendMetrics отправляет метрики на сервер в формате JSON батчем или по одной
+// SendMetrics отправляет метрики на сервер в формате JSON батчем или по одной.
 func SendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
 
-	// Ретраи при сбое
+	// Ретраи при сбое.
 	return retry.Retry(func() error {
 		var url string
 		var jsonData []byte
 		var err error
 
 		if batch {
-			// Отправляем батч метрик
+			// Отправляем батч метрик.
 			url = fmt.Sprintf("%s/updates/", serverURL)
 			jsonData, err = json.Marshal(metrics)
 			if err != nil {
@@ -79,7 +79,7 @@ func SendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, met
 			}
 			return sendJSON(ctx, cfg, client, url, jsonData)
 		} else {
-			// Отправляем метрики по одной
+			// Отправляем метрики по одной.
 			url = fmt.Sprintf("%s/update/", serverURL)
 
 			for _, metric := range metrics {

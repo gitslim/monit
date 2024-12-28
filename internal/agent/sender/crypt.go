@@ -7,7 +7,7 @@ import (
 	"io"
 )
 
-// makeHash расчитывает хэш по алгоритму HMAC-SHA256
+// makeHash расчитывает хэш по алгоритму SHA256.
 func makeHash(rc io.ReadCloser, key string) (string, error) {
 	var buf []byte
 	_, err := rc.Read(buf)

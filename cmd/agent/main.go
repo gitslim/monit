@@ -14,7 +14,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Инициализация логгера
+	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
 		// Логгер еще недоступен поэтому fmt...
@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Парсинг конфига
+	// Парсинг конфига.
 	cfg, err := conf.ParseConfig()
 	if err != nil {
 		log.Fatalf("Config parse failed: %v", err)

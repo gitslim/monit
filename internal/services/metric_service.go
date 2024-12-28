@@ -12,15 +12,15 @@ import (
 	"github.com/gitslim/monit/internal/storage"
 )
 
-// MetricService сервис для работы с метриками
+// MetricService сервис для работы с метриками.
 type MetricService struct {
 	storage storage.Storager
 }
 
-// MetricServiceConf конфиг для MetricService
+// MetricServiceConf конфиг для MetricService.
 type MetricServiceConf func(svc *MetricService) error
 
-// NewMetricService создает новый сервис MetricService, применяя к нему все конфиги
+// NewMetricService создает новый сервис MetricService, применяя к нему все конфиги.
 func NewMetricService(cfgs ...MetricServiceConf) (*MetricService, error) {
 	svc := &MetricService{}
 
@@ -33,7 +33,7 @@ func NewMetricService(cfgs ...MetricServiceConf) (*MetricService, error) {
 	return svc, nil
 }
 
-// WithStorage конфигурирует MetricService с заданным заданный Storage
+// WithStorage конфигурирует MetricService с заданным заданный Storage.
 func WithStorage(stor storage.Storager) MetricServiceConf {
 	return func(svc *MetricService) error {
 		svc.storage = stor
@@ -41,7 +41,7 @@ func WithStorage(stor storage.Storager) MetricServiceConf {
 	}
 }
 
-// WithMemStorage конфигурирует MetricService c MemStorage
+// WithMemStorage конфигурирует MetricService c MemStorage.
 func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, backupErrChan chan<- error) (MetricServiceConf, error) {
 	shouldBackupSync := cfg.StoreInterval == 0
 
@@ -52,7 +52,7 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, 
 
 	stor := storage.NewMemStorage(shouldBackupSync, file)
 	if cfg.Restore {
-		// Загружаем данные при запуске
+		// Загружаем данные при запуске.
 		err := stor.LoadFromFile(cfg.FileStoragePath)
 		if err != nil {
 			log.Debugf("Failed to load metrics from file: %v", err)
@@ -65,7 +65,7 @@ func WithMemStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config, 
 	return WithStorage(stor), nil
 }
 
-// WithPGStorage конфигурирует MetricService c MemStorage
+// WithPGStorage конфигурирует MetricService c MemStorage.
 func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (MetricServiceConf, error) {
 	pool, err := storage.CreateConnPool(cfg.DatabaseDSN)
 	if err != nil {
@@ -78,7 +78,7 @@ func WithPGStorage(ctx context.Context, log *logging.Logger, cfg *conf.Config) (
 	return WithStorage(stor), nil
 }
 
-// GetMetric получает метрику из хранилища по имени и типу
+// GetMetric получает метрику из хранилища по имени и типу.
 func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, error) {
 	val, err := s.storage.GetMetric(mName, mType)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, 
 	return val, nil
 }
 
-// UpdateMetric обновляет метрику
+// UpdateMetric обновляет метрику.
 func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	var v interface{}
 
@@ -120,17 +120,17 @@ func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
 	return s.storage.UpdateOrCreateMetric(mName, t, v)
 }
 
-// BatchUpdateMetrics обновляет метрики в хранилище батчами
+// BatchUpdateMetrics обновляет метрики в хранилище батчами.
 func (s *MetricService) BatchUpdateMetrics(metrics []*entities.MetricDTO) error {
 	return s.storage.BatchUpdateOrCreateMetrics(metrics)
 }
 
-// GetAllMetrics получает все метрики из хранилища
+// GetAllMetrics получает все метрики из хранилища.
 func (s *MetricService) GetAllMetrics() (map[string]entities.Metric, error) {
 	return s.storage.GetAllMetrics()
 }
 
-// PingStorage проверяет соединение с хранилищем
+// PingStorage проверяет соединение с хранилищем.
 func (s *MetricService) PingStorage() error {
 	return s.storage.Ping()
 }

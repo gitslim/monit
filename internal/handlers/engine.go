@@ -10,12 +10,12 @@ import (
 
 // CreateGinEngine создает и настраивает Gin engine с использованием конфигурации, логгера, режима Gin и шаблонов HTML.
 func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, templatesGlob string, metricService *services.MetricService) (*gin.Engine, error) {
-	// Gin engine
+	// Создаем gin engine.
 	r := gin.New()
 
 	gin.SetMode(ginMode)
 
-	// middlewares
+	// Middlewares.
 	r.Use(middleware.GzipMiddleware())
 	r.Use(middleware.LoggerMiddleware(log))
 	if cfg.Key != "" {
@@ -23,13 +23,13 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, temp
 		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
 	}
 
-	// загрузка шаблонов HTML
+	// Загрузка шаблонов HTML.
 	r.LoadHTMLGlob(templatesGlob)
 
-	// создание хендлера
+	// Создание хендлера.
 	metricHandler := NewMetricHandler(metricService)
 
-	// роуты
+	// Роуты.
 	r.GET("/", metricHandler.ListMetrics)
 	r.POST("/update/", metricHandler.UpdateMetric)
 	r.POST("/updates/", metricHandler.BatchUpdateMetrics)

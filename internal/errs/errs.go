@@ -2,7 +2,7 @@ package errs
 
 import "net/http"
 
-// Сигнальные ошибки приложения
+// Сигнальные ошибки приложения.
 var (
 	ErrInternal           = NewError(http.StatusInternalServerError, "internal error")
 	ErrBadRequest         = NewError(http.StatusBadRequest, "bad request")
@@ -11,18 +11,18 @@ var (
 	ErrInvalidMetricValue = NewError(http.StatusBadRequest, "invalid metric value")
 )
 
-// Сигнальная ошибка
+// Сигнальная ошибка.
 type Error struct {
 	Code    int
 	Message string
 }
 
-// Реализация интерфейса error
+// Реализация интерфейса error.
 func (e *Error) Error() string {
 	return e.Message
 }
 
-// Создает новую ошибку Error
+// Создает новую ошибку Error.
 func NewError(code int, message string) *Error {
 	return &Error{
 		Code:    code,
