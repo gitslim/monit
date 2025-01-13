@@ -4,7 +4,7 @@ all: test coverage statictest autotests
 
 test:
 	@echo "Running tests..."
-	go test ./... -v
+	go test ./... -v "$@"
 
 coverage:
 	@echo "Calculating test coverage..."

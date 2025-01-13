@@ -281,63 +281,77 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Contains(t, string(body), tt.metric.name)
 	})
-
 }
 
+// ExampleMetricHandler_ListMetrics пример получения html страницы со списком метрик.
 func ExampleMetricHandler_ListMetrics() {
+	// создаем сервер
 	r, err := createServer()
 	if err != nil {
-		panic("Cannoudn't create server: " + err.Error())
+		panic("Couldn't create server: " + err.Error())
 	}
 
+	// посылаем запрос на обновление метрики
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/", nil)
-
-	r.ServeHTTP(w, req)
-
-	// Проверяем ответ.
-	if w.Code != http.StatusOK {
-		panic("Expected HTTP 200 OK")
-	}
-
-	println(w.Body.String())
-
-}
-
-func ExampleMetricHandler_UpdateMetric() {
-	r, err := createServer()
-	if err != nil {
-		panic("Cannoudn't create server: " + err.Error())
-	}
-
 	payload := `{"id":"Alloc","type":"gauge","value":12345.67}`
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/update/", bytes.NewBufferString(payload))
-	req.Header.Set("Content-Type", "application/json")
-
+	req, _ := http.NewRequest(http.MethodPost, "/update/", bytes.NewBufferString(payload))
+	req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		panic("Expected HTTP 200 OK")
-	}
+	// получаем страницу со списком метрик
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/", nil)
+	r.ServeHTTP(w, req)
 
+	// проверяем, что метрика есть на странице
+	fmt.Println(strings.Contains(w.Body.String(), "12345.67"))
+
+	// Output: true
 }
 
-func ExampleMetricHandler_GetMetric() {
+// ExampleMetricHandler_UpdateMetric - пример обновления метрики
+func ExampleMetricHandler_UpdateMetric() {
+	// создаем сервер
 	r, err := createServer()
 	if err != nil {
-		panic("Cannoudn't create server: " + err.Error())
+		panic("Couldn't create server: " + err.Error())
 	}
 
+	// отправляем запрос на обновление метрики
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/value/gauge/Alloc", nil)
-
+	payload := `{"id":"Alloc","type":"gauge","value":12345.67}`
+	req, _ := http.NewRequest(http.MethodPost, "/update/", bytes.NewBufferString(payload))
+	req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		panic("Expected HTTP 200 OK")
+	// проверяем, что код ответа равен 200
+	fmt.Println(w.Code == http.StatusOK)
+
+	// Output: true
+}
+
+// ExampleMetricHandler_GetMetric пример получения метртики
+func ExampleMetricHandler_GetMetric() {
+	// создаем сервер
+	r, err := createServer()
+	if err != nil {
+		panic("Couldn't create server: " + err.Error())
 	}
 
-	println(w.Body.String())
+	// отправляем запрос на обновление метрики
+	w := httptest.NewRecorder()
+	payload := `{"id":"Alloc","type":"gauge","value":12345.67}`
+	req, _ := http.NewRequest(http.MethodPost, "/update/", bytes.NewBufferString(payload))
+	req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
+	r.ServeHTTP(w, req)
 
+	// отправляем запрос на получение метрики
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/value/gauge/Alloc", nil)
+	r.ServeHTTP(w, req)
+
+	// выводим результат
+	fmt.Println(w.Body.String())
+
+	// Output: 12345.67
 }
