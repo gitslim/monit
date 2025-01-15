@@ -1,6 +1,6 @@
 .PHONY: all test coverage staticcheck autotests clean
 
-all: test coverage statictest autotests
+all: gen lint statictest autotests test coverage
 
 test:
 	@echo "Running tests..."
@@ -18,6 +18,14 @@ statictest:
 autotests:
 	@echo "Running autotests..."
 	./scripts/autotests.sh
+
+lint:
+	@echo "Running staticlint..."
+	go run cmd/staticlint/main.go ./...
+
+gen:
+	@echo "Generating all code..."
+	go generate ./...
 
 clean:
 	@echo "Cleaning up..."

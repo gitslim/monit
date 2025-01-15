@@ -33,5 +33,5 @@ func main() {
 
 	_, _ = file.WriteString("package main\n")
 
-	fmt.Println("Documentation generated successfully!")
+	fmt.Println("Staticlint documentation generated successfully!")
 }
