@@ -26,7 +26,7 @@ import (
 func createServer() (*gin.Engine, error) {
 	log, err := logging.NewLogger()
 	if err != nil {
-		log.Fatal("Failed init logger")
+		panic(fmt.Sprintf("Failed to initialize logger: %v\n", err))
 	}
 	cfg := &conf.Config{
 		StoreInterval:   0,

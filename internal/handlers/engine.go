@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/middleware"
@@ -9,9 +11,16 @@ import (
 )
 
 // CreateGinEngine создает и настраивает Gin engine с использованием конфигурации, логгера, режима Gin и шаблонов HTML.
-func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, templatesGlob string, metricService *services.MetricService) (*gin.Engine, error) {
+func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, templatesGlob string, metricService *services.MetricService) (g *gin.Engine, err error) {
 	// Создаем gin engine.
 	r := gin.New()
+
+	// Обработка паники gin.
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fmt.Errorf("gin panic: %v", rec) // nolint:errcheck
+		}
+	}()
 
 	gin.SetMode(ginMode)
 
@@ -38,5 +47,5 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, temp
 	r.POST("/update/:type/:name/:value", metricHandler.UpdateMetric)
 	r.GET("/ping", metricHandler.PingStorage)
 
-	return r, nil
+	return r, err
 }
