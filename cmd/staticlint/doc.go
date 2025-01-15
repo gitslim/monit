@@ -2,7 +2,11 @@
 //
 // Для запуска multichecker используйте команду:
 //
-// go run cmd/staticlint/main.go
+// go run cmd/staticlint/main.go <путь к пакету | ./...>
+//
+// Для получения справки по multichecker используйте команду:
+//
+// go run cmd/staticlint/main.go -help
 //
 // Используются следующие анализаторы:
 //
