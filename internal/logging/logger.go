@@ -14,15 +14,12 @@ type Logger struct {
 
 // NewLogger создает новый логгер.
 func NewLogger() (*Logger, error) {
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewProduction()
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		err := logger.Sync()
-		if err != nil {
-			fmt.Println("logger sync error:", err)
-		}
+		_ = logger.Sync()
 	}()
 
 	sugar := logger.Sugar()
