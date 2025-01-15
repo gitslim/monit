@@ -34,15 +34,15 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 	req.Header.Set(httpconst.HeaderContentType, httpconst.ContentTypeJSON)
 	req.Header.Set(httpconst.HeaderContentEncoding, httpconst.ContentEncodingGzip)
 
-	// Если заданк ключ, подписываем данные.
+	// Если задан ключ, подписываем данные.
 	if cfg.Key != "" {
-		body, err := req.GetBody()
-		if err != nil {
-			return err
+		body, err2 := req.GetBody()
+		if err2 != nil {
+			return err2
 		}
-		hash, err := makeHash(body, cfg.Key)
-		if err != nil {
-			return err
+		hash, err2 := makeHash(body, cfg.Key)
+		if err2 != nil {
+			return err2
 		}
 		req.Header.Set(httpconst.HeaderHashSHA256, hash)
 	}
@@ -51,7 +51,10 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 	if err != nil {
 		return fmt.Errorf("failed to send request: %v", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		err2 := res.Body.Close()
+		fmt.Printf("Failed to close response body: %v\n", err2)
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", res.StatusCode)

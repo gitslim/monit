@@ -316,19 +316,19 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 		}()
 
 		for _, dto := range metrics {
-			mType, err := entities.GetMetricType(dto.MType)
-			if err != nil {
-				fmt.Printf("Bad metric type: %v\n", err)
+			mType, err2 := entities.GetMetricType(dto.MType)
+			if err2 != nil {
+				fmt.Printf("Bad metric type: %v\n", err2)
 			}
 			switch mType {
 			case entities.Gauge:
-				_, err := tx.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
+				_, err = tx.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
 				if err != nil {
 					return errs.ErrInternal
 				}
 
 			case entities.Counter:
-				_, err := tx.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
+				_, err = tx.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
 				if err != nil {
 					return errs.ErrInternal
 				}

@@ -12,10 +12,14 @@ func main() {
 
 	file, err := os.Create("doc.go")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create documentation file: %v\n", err)
-		os.Exit(1)
+		panic(err)
 	}
-	defer file.Close()
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	_, _ = file.WriteString(`// Команда staticlint запускает multichecker для статического анализа кода.
 //
@@ -28,7 +32,7 @@ func main() {
 `)
 
 	for _, analyzer := range analyzers {
-		_, _ = file.WriteString("// " + staticlint.AnalyzerDescription(analyzer) + "\n")
+		_, _ = file.WriteString("//\n// " + staticlint.AnalyzerDescription(analyzer) + "\n")
 	}
 
 	_, _ = file.WriteString("package main\n")

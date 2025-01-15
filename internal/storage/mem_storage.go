@@ -175,7 +175,12 @@ func (s *MemStorage) WriteBackup(w io.Writer) error {
 
 // StartPeriodicBackup запускает периодическое сохранение данных в файл на диске.
 func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logger, fd *os.File, interval time.Duration, errChan chan<- error) {
-	defer fd.Close()
+	defer func() {
+		err := fd.Close()
+		if err != nil {
+			log.Errorf("MemStorage backup file close error: %v", err)
+		}
+	}()
 
 	for {
 		select {

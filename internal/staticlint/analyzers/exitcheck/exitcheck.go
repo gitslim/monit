@@ -1,4 +1,4 @@
-package noexit
+package exitcheck
 
 import (
 	"go/ast"

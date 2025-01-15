@@ -28,7 +28,8 @@ type GzipPool struct {
 
 // NewGzipPool создает пул для gzip-компрессии.
 func NewGzipPool() *GzipPool {
-	return &GzipPool{readers: sync.Pool{},
+	return &GzipPool{
+		readers:         sync.Pool{},
 		writers:         sync.Pool{},
 		responseWriters: sync.Pool{},
 	}
@@ -38,7 +39,10 @@ func NewGzipPool() *GzipPool {
 func (pool *GzipPool) GetReader(src io.Reader) (reader *gzip.Reader) {
 	if r := pool.readers.Get(); r != nil {
 		reader = r.(*gzip.Reader)
-		reader.Reset(src)
+		err := reader.Reset(src)
+		if err != nil {
+			reader, _ = gzip.NewReader(src)
+		}
 	} else {
 		reader, _ = gzip.NewReader(src)
 	}
@@ -47,7 +51,10 @@ func (pool *GzipPool) GetReader(src io.Reader) (reader *gzip.Reader) {
 
 // PutReader возвращает reader для gzip-компрессии в пул.
 func (pool *GzipPool) PutReader(reader *gzip.Reader) {
-	reader.Close()
+	err := reader.Close()
+	if err != nil {
+		return
+	}
 	pool.readers.Put(reader)
 }
 
@@ -64,7 +71,10 @@ func (pool *GzipPool) GetWriter(dst io.Writer) (writer *gzip.Writer) {
 
 // PutWriter возвращает writer для gzip-компрессии в пул.
 func (pool *GzipPool) PutWriter(writer *gzip.Writer) {
-	writer.Close()
+	err := writer.Close()
+	if err != nil {
+		return
+	}
 	pool.writers.Put(writer)
 }
 

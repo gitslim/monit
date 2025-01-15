@@ -66,7 +66,10 @@ func main() {
 
 	// Запуск pprof сервера.
 	go func() {
-		http.ListenAndServe(":8081", nil)
+		err := http.ListenAndServe(":8081", nil)
+		if err != nil {
+			log.Fatalf("pprof server failed: %v", err)
+		}
 	}()
 
 	// Запуск сервера.

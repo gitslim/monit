@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gitslim/monit/internal/staticlint/analyzers/noexit"
+	"github.com/gitslim/monit/internal/staticlint/analyzers/exitcheck"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/printf"
@@ -32,8 +32,8 @@ func AllAnalyzers() []*analysis.Analyzer {
 	// добавление анализатора errcheck.
 	all = append(all, errcheck.Analyzer)
 
-	// добавление кастомного анализатора noexit.
-	all = append(all, noexit.Analyzer)
+	// добавление кастомного анализатора exitcheck.
+	all = append(all, exitcheck.Analyzer)
 
 	// добавление всех S-анализаторов simple.
 	for _, v := range simple.Analyzers {

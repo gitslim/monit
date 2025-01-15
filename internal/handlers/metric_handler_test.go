@@ -130,15 +130,16 @@ func TestUpdateMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name+":plain", func(t *testing.T) {
 			url := fmt.Sprintf("/update/%s/%s/%s", tt.metric.typ, tt.metric.name, tt.metric.val)
-			req, err := http.NewRequest(http.MethodPost, url, nil)
-			assert.NoError(t, err)
+			req, err2 := http.NewRequest(http.MethodPost, url, nil)
+			assert.NoError(t, err2)
 
 			req.Header.Add(httpconst.HeaderContentType, httpconst.ContentTypePlain)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 
 			res := w.Result()
-			res.Body.Close()
+			err = res.Body.Close()
+			assert.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 		})
@@ -155,7 +156,8 @@ func TestUpdateMetrics(t *testing.T) {
 			r.ServeHTTP(w, req)
 
 			res := w.Result()
-			res.Body.Close()
+			err = res.Body.Close()
+			assert.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 		})
@@ -237,7 +239,8 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
-		res.Body.Close()
+		err = res.Body.Close()
+		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
@@ -258,7 +261,8 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 
 		err = json.NewDecoder(res.Body).Decode(&dto)
 		assert.NoError(t, err)
-		res.Body.Close()
+		err = res.Body.Close()
+		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
@@ -276,7 +280,8 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		res := w.Result()
 		body, err := io.ReadAll(res.Body)
 		assert.NoError(t, err)
-		res.Body.Close()
+		err = res.Body.Close()
+		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Contains(t, string(body), tt.metric.name)
