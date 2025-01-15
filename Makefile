@@ -34,3 +34,4 @@ godoc-serve:
 clean:
 	@echo "Cleaning up..."
 	rm -f cover.out
+	rm -rf /tmp/.monit-godoc
