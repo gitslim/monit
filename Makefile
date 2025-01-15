@@ -27,6 +27,10 @@ gen:
 	@echo "Generating all code..."
 	go generate ./...
 
+godoc-serve:
+	@echo "Starting godoc server..."
+	rm -rf /tmp/.monit-godoc; mkdir -p /tmp/.monit-godoc/src && cp -r . /tmp/.monit-godoc/src/monit && godoc -play -http=:6060 -goroot /tmp/.monit-godoc
+
 clean:
 	@echo "Cleaning up..."
 	rm -f cover.out

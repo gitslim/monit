@@ -17,7 +17,7 @@ func main() {
 	}
 	defer file.Close()
 
-	_, _ = file.WriteString(`// Command staticlint запускает multichecker для статического анализа кода.
+	_, _ = file.WriteString(`// Команда staticlint запускает multichecker для статического анализа кода.
 //
 // Для запуска multichecker используйте команду:
 //

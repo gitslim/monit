@@ -1,4 +1,4 @@
-// Command staticlint запускает multichecker для статического анализа кода.
+// Команда staticlint запускает multichecker для статического анализа кода.
 //
 // Для запуска multichecker используйте команду:
 //

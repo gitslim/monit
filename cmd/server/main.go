@@ -1,12 +1,12 @@
-// Модуль для запуска сервера метрик.
+// Команда server запускает сервер метрик.
 package main
 
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 
-	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/gitslim/monit/internal/logging"
