@@ -1,3 +1,4 @@
+// Package exitcheck проверяет, что в функции main пакета main не вызывается os.Exit.
 package exitcheck
 
 import (

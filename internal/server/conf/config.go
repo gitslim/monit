@@ -1,4 +1,4 @@
-// Модуль config создает конфигурацию сервера метрик, используя флаги, переменные окружения и значения по умолчанию.
+// Package conf создает конфигурацию сервера метрик, используя флаги, переменные окружения и значения по умолчанию.
 package conf
 
 import (
@@ -61,12 +61,10 @@ func ParseConfig() (*Config, error) {
 	}
 
 	return cfg, nil
-
 }
 
 // valiadteConfig - проверка конфига на корректность.
 func validateConfig(cfg *Config) error {
-
 	// Проверка конфига.
 	if cfg.Addr == "" {
 		return errors.New("адрес сервера не может быть пустым")
