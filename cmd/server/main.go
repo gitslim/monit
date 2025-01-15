@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	_ "net/http/pprof"
 
@@ -22,9 +21,8 @@ func main() {
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
-		// Логгер еще недоступен поэтому fmt...
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
-		os.Exit(1)
+		// Логгер еще недоступен поэтому panic...
+		panic(fmt.Sprintf("Failed to initialize logger: %v\n", err))
 	}
 
 	// Парсинг конфига.
