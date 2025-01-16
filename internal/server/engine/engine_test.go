@@ -1,5 +1,5 @@
-// Package handlers_test содержит тесты для пакета handlers.
-package handlers_test
+// Package engine_test содержит тесты для пакета engine.
+package engine_test
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
+	"github.com/gitslim/monit/internal/server/engine"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
@@ -36,7 +36,6 @@ func TestCreateGinEngine(t *testing.T) {
 		cfg           *conf.Config
 		log           *logging.Logger
 		ginMode       string
-		templatesGlob string
 		metricService *services.MetricService
 		wantErr       bool
 	}{
@@ -45,23 +44,13 @@ func TestCreateGinEngine(t *testing.T) {
 			cfg:           cfg,
 			log:           log,
 			ginMode:       gin.DebugMode,
-			templatesGlob: "../../templates/*",
 			metricService: metricService,
 			wantErr:       false,
-		},
-		{
-			name:          "error bad templates dir",
-			cfg:           cfg,
-			log:           log,
-			ginMode:       gin.DebugMode,
-			templatesGlob: "bad/templates/*",
-			metricService: metricService,
-			wantErr:       true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := handlers.CreateGinEngine(tt.cfg, tt.log, tt.ginMode, tt.templatesGlob, tt.metricService)
+			got, gotErr := engine.CreateGinEngine(tt.cfg, tt.log, tt.ginMode, tt.metricService)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("CreateGinEngine() failed: %v", gotErr)

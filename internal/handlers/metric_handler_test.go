@@ -1,8 +1,7 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,44 +11,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/httpconst"
-	"github.com/gitslim/monit/internal/logging"
-	"github.com/gitslim/monit/internal/server/conf"
-	"github.com/gitslim/monit/internal/services"
+	"github.com/gitslim/monit/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// creatServer создает сервер для тестирования.
-func createServer() (*gin.Engine, error) {
-	log, err := logging.NewLogger()
-	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize logger: %v\n", err))
-	}
-	cfg := &conf.Config{
-		StoreInterval:   0,
-		FileStoragePath: "/tmp/.monit/memstorage.json",
-		Restore:         false,
-	}
-
-	conf, err := services.WithMemStorage(context.Background(), log, cfg, make(chan<- error))
-	if err != nil {
-		return nil, err
-	}
-
-	metricService, err := services.NewMetricService(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	return CreateGinEngine(cfg, log, gin.ReleaseMode, "../../templates/*", metricService)
-}
-
 // TestUpdateMetrics тестирует обновление метрик по одной.
 func TestUpdateMetrics(t *testing.T) {
-	r, err := createServer()
+	r, err := testhelpers.CreateServerMock()
 	require.NoError(t, err)
 
 	type metric struct {
@@ -166,7 +137,7 @@ func TestUpdateMetrics(t *testing.T) {
 
 // TestBatchUpdateGetListMetrics тестирует пакетное обновление, получение значений метрик и их список.
 func TestBatchUpdateGetListMetrics(t *testing.T) {
-	r, err := createServer()
+	r, err := testhelpers.CreateServerMock()
 	require.NoError(t, err)
 
 	type metric struct {
@@ -291,7 +262,7 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 // ExampleMetricHandler_ListMetrics пример получения html страницы со списком метрик.
 func ExampleMetricHandler_ListMetrics() {
 	// создаем сервер
-	r, err := createServer()
+	r, err := testhelpers.CreateServerMock()
 	if err != nil {
 		panic("Couldn't create server: " + err.Error())
 	}
@@ -317,7 +288,7 @@ func ExampleMetricHandler_ListMetrics() {
 // ExampleMetricHandler_UpdateMetric - пример обновления метрики
 func ExampleMetricHandler_UpdateMetric() {
 	// создаем сервер
-	r, err := createServer()
+	r, err := testhelpers.CreateServerMock()
 	if err != nil {
 		panic("Couldn't create server: " + err.Error())
 	}
@@ -338,7 +309,7 @@ func ExampleMetricHandler_UpdateMetric() {
 // ExampleMetricHandler_GetMetric пример получения метртики
 func ExampleMetricHandler_GetMetric() {
 	// создаем сервер
-	r, err := createServer()
+	r, err := testhelpers.CreateServerMock()
 	if err != nil {
 		panic("Couldn't create server: " + err.Error())
 	}
