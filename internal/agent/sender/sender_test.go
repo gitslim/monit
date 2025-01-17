@@ -2,14 +2,11 @@ package sender_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/agent/sender"
-	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +19,6 @@ func TestSendMetrics(t *testing.T) {
 	srv := testhelpers.StartServerMock(engine)
 	// defer testhelpers.StopServerMock(srv)
 
-
 	// создание конфига
 	cfg := &conf.Config{
 		Addr: srv.Addr,
@@ -32,8 +28,7 @@ func TestSendMetrics(t *testing.T) {
 	client := &http.Client{}
 
 	sendFunc := func(data string, batch bool) error {
-		var metrics []*entities.MetricDTO
-		err := json.NewDecoder(strings.NewReader(data)).Decode(&metrics)
+		metrics, err := testhelpers.JsonToMetricDTO(data)
 		assert.NoError(t, err)
 		return sender.SendMetrics(context.Background(), cfg, client, metrics, batch)
 	}
