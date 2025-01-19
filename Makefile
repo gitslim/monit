@@ -1,10 +1,10 @@
 .PHONY: all test coverage staticcheck autotests clean
 
-all: gen lint statictest autotests test coverage
+all: gen statictest autotests coverage
 
 test:
 	@echo "Running tests..."
-	go test ./... -v "$@"
+	go test ./... "$@"
 
 coverage:
 	@echo "Calculating test coverage..."

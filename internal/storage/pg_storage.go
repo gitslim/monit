@@ -319,6 +319,7 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 			mType, err2 := entities.GetMetricType(dto.MType)
 			if err2 != nil {
 				fmt.Printf("Bad metric type: %v\n", err2)
+				continue
 			}
 			switch mType {
 			case entities.Gauge:

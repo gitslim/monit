@@ -21,7 +21,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 	// Создание gin engine.
 	r, err := engine.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
 	if err != nil {
-		panic("Creating gin engine failed")
+		log.Fatalf("Failed to create gin engine: %v\n", err)
 	}
 
 	// Создаем сервер.

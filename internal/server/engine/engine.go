@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
@@ -23,12 +24,15 @@ func getTemplateGlob() (string, error) {
 
 	dir := filepath.Dir(file)
 	// Получаем путь к папке с шаблонами.
-	return fmt.Sprintf("%s/../../../templates/*", dir), nil
+	parts := strings.Split(dir, "/")
+	dir = strings.Join(parts[:len(parts)-3], "/")
+	return fmt.Sprintf("%s/templates/*", dir), nil
 }
 
 // CreateGinEngine создает и настраивает Gin engine с использованием конфигурации, логгера, режима Gin и шаблонов HTML.
 func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metricService *services.MetricService) (g *gin.Engine, err error) {
 	// Создаем gin engine.
+	gin.SetMode(ginMode)
 	r := gin.New()
 
 	// Обработка паники gin.
@@ -37,8 +41,6 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 			err = fmt.Errorf("gin panic: %v", rec) // nolint:errcheck
 		}
 	}()
-
-	gin.SetMode(ginMode)
 
 	// Middlewares.
 	r.Use(middleware.GzipMiddleware())

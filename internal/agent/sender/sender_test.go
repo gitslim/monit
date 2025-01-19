@@ -9,15 +9,22 @@ import (
 	"github.com/gitslim/monit/internal/agent/sender"
 	"github.com/gitslim/monit/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSendMetrics(t *testing.T) {
+	// создание мок-сервера
+	r, teardown, err := testhelpers.CreateServerMock(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
+
 	// запуск мок-сервера
-	engine, err := testhelpers.CreateServerMock()
-	require.NoError(t, err)
-	srv := testhelpers.StartServerMock(engine)
-	// defer testhelpers.StopServerMock(srv)
+	srv, teardown, err := testhelpers.StartServerMock(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
 
 	// создание конфига
 	cfg := &conf.Config{
@@ -28,7 +35,7 @@ func TestSendMetrics(t *testing.T) {
 	client := &http.Client{}
 
 	sendFunc := func(data string, batch bool) error {
-		metrics, err := testhelpers.JsonToMetricDTO(data)
+		metrics, err := testhelpers.JSONToMetricDTO(data)
 		assert.NoError(t, err)
 		return sender.SendMetrics(context.Background(), cfg, client, metrics, batch)
 	}

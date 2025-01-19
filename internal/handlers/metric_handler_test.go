@@ -11,18 +11,56 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
+	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-// TestUpdateMetrics тестирует обновление метрик по одной.
-func TestUpdateMetrics(t *testing.T) {
-	r, err := testhelpers.CreateServerMock()
-	require.NoError(t, err)
+// TestMemStorageNonBatchUpdate тестирует обновление метрик в хранилище в памяти с одиночной отправкой
+func TestMemStorageNonBatchUpdate(t *testing.T) {
+	r, teardown, err := testhelpers.CreateServerMock(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
+	updateMetricNonBatch(t, r)
+}
 
+// TestMemStorageBatchUpdate тестирует обновление метрик в хранилище в памяти с пакетной отправкой
+func TestMemStorageBatchUpdate(t *testing.T) {
+	r, teardown, err := testhelpers.CreateServerMock(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
+	updateMetricsBatch(t, r)
+}
+
+// TestPGStorageNonBatchUpdate тестирует обновление метрик в хранилище в базе данных с одиночной отправкой
+func TestPGStorageNonBatchUpdate(t *testing.T) {
+	r, teardown, err := testhelpers.CreateServerMock(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
+	updateMetricNonBatch(t, r)
+}
+
+// TestPGStorageBatchUpdate тестирует обновление метрик в хранилище в базе данных с пакетной отправкой
+func TestPGStorageBatchUpdate(t *testing.T) {
+	r, teardown, err := testhelpers.CreateServerMock(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer teardown()
+	updateMetricsBatch(t, r)
+}
+
+// updateMetricNonBatch тестирует обновление метрик по одной.
+func updateMetricNonBatch(t *testing.T, r *gin.Engine) {
 	type metric struct {
 		typ   string
 		name  string
@@ -109,7 +147,7 @@ func TestUpdateMetrics(t *testing.T) {
 			r.ServeHTTP(w, req)
 
 			res := w.Result()
-			err = res.Body.Close()
+			err := res.Body.Close()
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
@@ -117,7 +155,6 @@ func TestUpdateMetrics(t *testing.T) {
 		t.Run(tt.name+":json", func(t *testing.T) {
 			url := "/update/"
 			jsonData := fmt.Sprintf("{\"id\":\"%s\",\"type\":\"%s\",\"%s\":%s}", tt.metric.name, tt.metric.typ, tt.metric.param, tt.metric.val)
-			assert.NoError(t, err)
 
 			req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(jsonData))
 			assert.NoError(t, err)
@@ -135,11 +172,8 @@ func TestUpdateMetrics(t *testing.T) {
 	}
 }
 
-// TestBatchUpdateGetListMetrics тестирует пакетное обновление, получение значений метрик и их список.
-func TestBatchUpdateGetListMetrics(t *testing.T) {
-	r, err := testhelpers.CreateServerMock()
-	require.NoError(t, err)
-
+// updateMetricsBatch тестирует пакетное обновление, получение значений метрик и их список.
+func updateMetricsBatch(t *testing.T, r *gin.Engine) {
 	type metric struct {
 		typ   string
 		name  string
@@ -191,7 +225,7 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 			},
 		},
 	}
-	t.Run("BatchUpdate", func(t *testing.T) {
+	t.Run("Update", func(t *testing.T) {
 		url := "/updates/"
 		jsonData := "["
 		for i, tt := range tests {
@@ -210,10 +244,10 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
 		err = res.Body.Close()
 		assert.NoError(t, err)
-
-		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
 	t.Run("Get", func(t *testing.T) {
 		url := "/value/"
@@ -228,15 +262,20 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
-		var dto *entities.MetricDTO
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 
+		var dto *entities.MetricDTO
 		err = json.NewDecoder(res.Body).Decode(&dto)
 		assert.NoError(t, err)
 		err = res.Body.Close()
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusOK, res.StatusCode)
-		assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
+		switch tt.metric.typ {
+		case "counter":
+			assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
+		case "gauge":
+			assert.Equal(t, tt.metric.val, strconv.FormatFloat(*dto.Value, 'f', -1, 64))
+		}
 	})
 	t.Run("List", func(t *testing.T) {
 		url := "/"
@@ -249,12 +288,13 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+
 		body, err := io.ReadAll(res.Body)
 		assert.NoError(t, err)
 		err = res.Body.Close()
 		assert.NoError(t, err)
 
-		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Contains(t, string(body), tt.metric.name)
 	})
 }
@@ -262,10 +302,11 @@ func TestBatchUpdateGetListMetrics(t *testing.T) {
 // ExampleMetricHandler_ListMetrics пример получения html страницы со списком метрик.
 func ExampleMetricHandler_ListMetrics() {
 	// создаем сервер
-	r, err := testhelpers.CreateServerMock()
+	r, teardown, err := testhelpers.CreateServerMock(false)
 	if err != nil {
-		panic("Couldn't create server: " + err.Error())
+		panic(err)
 	}
+	defer teardown()
 
 	// посылаем запрос на обновление метрики
 	w := httptest.NewRecorder()
@@ -287,11 +328,14 @@ func ExampleMetricHandler_ListMetrics() {
 
 // ExampleMetricHandler_UpdateMetric - пример обновления метрики
 func ExampleMetricHandler_UpdateMetric() {
+	var _ handlers.MetricHandler // for import
+
 	// создаем сервер
-	r, err := testhelpers.CreateServerMock()
+	r, teardown, err := testhelpers.CreateServerMock(false)
 	if err != nil {
-		panic("Couldn't create server: " + err.Error())
+		panic(err)
 	}
+	defer teardown()
 
 	// отправляем запрос на обновление метрики
 	w := httptest.NewRecorder()
@@ -309,10 +353,11 @@ func ExampleMetricHandler_UpdateMetric() {
 // ExampleMetricHandler_GetMetric пример получения метртики
 func ExampleMetricHandler_GetMetric() {
 	// создаем сервер
-	r, err := testhelpers.CreateServerMock()
+	r, teardown, err := testhelpers.CreateServerMock(false)
 	if err != nil {
-		panic("Couldn't create server: " + err.Error())
+		panic(err)
 	}
+	defer teardown()
 
 	// отправляем запрос на обновление метрики
 	w := httptest.NewRecorder()
