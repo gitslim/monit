@@ -1,4 +1,4 @@
-// Модуль errs определяет ошибки приложения.
+// Package errs определяет ошибки приложения.
 package errs
 
 import "net/http"
@@ -12,18 +12,18 @@ var (
 	ErrInvalidMetricValue = NewError(http.StatusBadRequest, "invalid metric value")
 )
 
-// Сигнальная ошибка.
+// Error определяет сигнальную ошибку.
 type Error struct {
 	Code    int
 	Message string
 }
 
-// Реализация интерфейса error.
+// Error реализацует интерфейс error.
 func (e *Error) Error() string {
 	return e.Message
 }
 
-// Создает новую ошибку Error.
+// NewError создает новую ошибку Error.
 func NewError(code int, message string) *Error {
 	return &Error{
 		Code:    code,

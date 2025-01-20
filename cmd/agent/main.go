@@ -1,26 +1,46 @@
-// Модуль для запуска агента сбора метрик.
+// Команда agent запускает агент сбора метрик.
 package main
 
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/gitslim/monit/internal/agent"
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/logging"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
+func printBuildInfo() {
+	fmt.Printf("Build version: %s\n", getOrDefault(buildVersion))
+	fmt.Printf("Build date: %s\n", getOrDefault(buildDate))
+	fmt.Printf("Build commit: %s\n", getOrDefault(buildCommit))
+}
+
+func getOrDefault(value string) string {
+	if value == "" {
+		return "N/A"
+	}
+	return value
+}
+
 func main() {
+	// вывод информации о билде.
+	printBuildInfo()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
-		// Логгер еще недоступен поэтому fmt...
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
-		os.Exit(1)
+		// Логгер еще недоступен поэтому panic...
+		panic(fmt.Sprintf("Failed to initialize logger: %v\n", err))
 	}
 
 	// Парсинг конфига.

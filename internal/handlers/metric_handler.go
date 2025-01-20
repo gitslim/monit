@@ -55,52 +55,58 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 	var mType, mName, mValue string
 
 	if isJSONRequest(c) {
-		var dto *entities.MetricDTO
-
-		err := json.NewDecoder(c.Request.Body).Decode(&dto)
-		if err != nil {
+		dto := &entities.MetricDTO{}
+		if err := json.NewDecoder(c.Request.Body).Decode(dto); err != nil {
 			writeError(c, errs.ErrBadRequest)
 			return
 		}
 
-		mType = dto.MType
-		mName = dto.ID
-
-		if mType == "counter" && dto.Delta != nil {
+		mType, mName = dto.MType, dto.ID
+		switch mType {
+		case "counter":
+			if dto.Delta == nil {
+				writeError(c, errs.ErrBadRequest)
+				return
+			}
 			mValue = strconv.FormatInt(*dto.Delta, 10)
-		} else if mType == "gauge" && dto.Value != nil {
+		case "gauge":
+			if dto.Value == nil {
+				writeError(c, errs.ErrBadRequest)
+				return
+			}
 			mValue = strconv.FormatFloat(*dto.Value, 'f', -1, 64)
-		} else {
+		default:
 			writeError(c, errs.ErrBadRequest)
 			return
 		}
-
 	} else {
-		mType = c.Param("type")
-		mName = c.Param("name")
-		mValue = c.Param("value")
+		mType, mName, mValue = c.Param("type"), c.Param("name"), c.Param("value")
 	}
 
 	if err := h.metricService.UpdateMetric(mName, mType, mValue); err != nil {
 		writeError(c, err)
 		return
 	}
+
 	if isJSONRequest(c) {
-		m, err := h.metricService.GetMetric(mName, mType)
+		metric, err := h.metricService.GetMetric(mName, mType)
 		if err != nil {
 			writeError(c, err)
 			return
 		}
-		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetValue())
+		dto, err := entities.NewMetricDTO(metric.GetName(), metric.GetType().String(), metric.GetValue())
 		if err != nil {
 			writeError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, dto)
-	} else {
-		c.String(http.StatusOK, "Metric %s updated successfully\n", mName)
+		return
 	}
+
+	c.String(http.StatusOK, "Metric %s updated successfully\n", mName)
 }
+
+
 
 // BatchUpdateMetrics обновляет метрики батчами.
 func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {

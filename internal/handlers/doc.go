@@ -1,2 +1,2 @@
-// Модуль handlers управляет созданием gin.Engine и определяет обработчики http запросов.
+// Package handlers управляет созданием gin.Engine и определяет обработчики http запросов.
 package handlers

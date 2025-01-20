@@ -14,7 +14,12 @@ func compressGzip(data []byte, level int) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to gzip writer: %v", err)
 	}
-	defer w.Close()
+	defer func() {
+		err2 := w.Close()
+		if err2 != nil {
+			fmt.Printf("failed to close gzip writer: %v\n", err2)
+		}
+	}()
 
 	_, err = w.Write(data)
 	if err != nil {

@@ -1,4 +1,4 @@
-// Модуль server содержит логику создания и работы сервера метрик.
+// Package server содержит логику создания и работы сервера метрик.
 package server
 
 import (
@@ -10,18 +10,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
+	"github.com/gitslim/monit/internal/server/engine"
 	"github.com/gitslim/monit/internal/services"
 )
 
 // Start запускает сервер.
 func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricService *services.MetricService) {
 	// Создание gin engine.
-	r, err := handlers.CreateGinEngine(cfg, log, gin.ReleaseMode, "templates/*", metricService)
+	r, err := engine.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
 	if err != nil {
-		panic("Creating gin engine failed")
+		log.Fatalf("Failed to create gin engine: %v\n", err)
 	}
 
 	// Создаем сервер.

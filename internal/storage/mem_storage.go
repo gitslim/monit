@@ -17,8 +17,7 @@ import (
 
 // MemStorage хранилище метрик в памяти.
 type MemStorage struct {
-	mu               sync.RWMutex
-	metrics          map[string]entities.Metric
+	metrics          sync.Map
 	shouldBackupSync bool
 	backupWriter     io.Writer
 }
@@ -26,13 +25,15 @@ type MemStorage struct {
 // MarshalJSON сериализует данные в json.
 func (s *MemStorage) MarshalJSON() ([]byte, error) {
 	tmp := make(map[string]interface{})
-	for name, metric := range s.metrics {
-		tmp[name] = map[string]interface{}{
+	s.metrics.Range(func(key, value interface{}) bool {
+		metric := value.(entities.Metric)
+		tmp[key.(string)] = map[string]interface{}{
 			"name":  metric.GetName(),
 			"value": metric.GetValue(),
 			"type":  metric.GetType(),
 		}
-	}
+		return true
+	})
 	return json.Marshal(tmp)
 }
 
@@ -43,7 +44,6 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	s.metrics = make(map[string]entities.Metric)
 	for name, raw := range temp {
 		var metricType struct {
 			Type entities.MetricType `json:"type"`
@@ -56,24 +56,29 @@ func (s *MemStorage) UnmarshalJSON(data []byte) error {
 		case entities.Gauge:
 			var gauge entities.GaugeMetric
 			if err := json.Unmarshal(raw, &gauge); err == nil {
-				s.metrics[name] = &gauge
+				s.metrics.Store(name, &gauge)
+			} else {
+				return err
 			}
 		case entities.Counter:
 			var counter entities.CounterMetric
 			if err := json.Unmarshal(raw, &counter); err == nil {
-				s.metrics[name] = &counter
+				s.metrics.Store(name, &counter)
+			} else {
+				return err
 			}
 		default:
 			return fmt.Errorf("unknown metric type: %s", metricType.Type)
 		}
 	}
+
 	return nil
 }
 
 // NewMemStorage - создает новое хранилище метрик в памяти.
 func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 	return &MemStorage{
-		metrics:          make(map[string]entities.Metric),
+		metrics:          sync.Map{},
 		shouldBackupSync: shouldBackupSync,
 		backupWriter:     backupWriter,
 	}
@@ -99,9 +104,7 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 		return err
 	}
 
-	s.mu.Lock()
-	s.metrics[mName] = m
-	s.mu.Unlock()
+	s.metrics.Store(mName, m)
 
 	if s.shouldBackupSync {
 		if err := s.WriteBackup(s.backupWriter); err != nil {
@@ -113,20 +116,20 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 
 // GetMetric получает метрику по имени.
 func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if metric, exists := s.metrics[mName]; exists {
-		return metric, nil
+	if metric, exists := s.metrics.Load(mName); exists {
+		return metric.(entities.Metric), nil
 	}
 	return nil, errs.ErrMetricNotFound
 }
 
 // GetAllMetrics получает все метрики.
 func (s *MemStorage) GetAllMetrics() (map[string]entities.Metric, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return s.metrics, nil
+	metrics := make(map[string]entities.Metric)
+	s.metrics.Range(func(key, value interface{}) bool {
+		metrics[key.(string)] = value.(entities.Metric)
+		return true
+	})
+	return metrics, nil
 }
 
 // LoadFromFile загружает данные из файла в хранилище.
@@ -140,36 +143,29 @@ func (s *MemStorage) LoadFromFile(filename string) error {
 		return err
 	}
 
-	var storage MemStorage
-	err = json.Unmarshal(data, &storage)
+	err = json.Unmarshal(data, &s)
 	if err != nil {
 		return err
 	}
-
-	s.mu.Lock()
-	s.metrics = storage.metrics
-	s.mu.Unlock()
 
 	return nil
 }
 
 // WriteBackup сохраняет данные хранилища в файл.
 func (s *MemStorage) WriteBackup(w io.Writer) error {
-	s.mu.RLock()
 	data, err := json.Marshal(&s)
-	s.mu.RUnlock()
 	if err != nil {
 		return err
 	}
 
 	if file, ok := w.(*os.File); ok {
 		// Очищаем файл.
-		if err := file.Truncate(0); err != nil {
+		if err = file.Truncate(0); err != nil {
 			return err
 		}
 
 		// Переходим в начало.
-		if _, err := file.Seek(0, 0); err != nil {
+		if _, err = file.Seek(0, 0); err != nil {
 			return err
 		}
 	}
@@ -179,7 +175,12 @@ func (s *MemStorage) WriteBackup(w io.Writer) error {
 
 // StartPeriodicBackup запускает периодическое сохранение данных в файл на диске.
 func (s *MemStorage) StartPeriodicBackup(ctx context.Context, log *logging.Logger, fd *os.File, interval time.Duration, errChan chan<- error) {
-	defer fd.Close()
+	defer func() {
+		err := fd.Close()
+		if err != nil {
+			log.Errorf("MemStorage backup file close error: %v", err)
+		}
+	}()
 
 	for {
 		select {
@@ -247,9 +248,7 @@ func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) e
 			continue
 		}
 
-		s.mu.Lock()
-		s.metrics[m.GetName()] = m
-		s.mu.Unlock()
+		s.metrics.Store(m.GetName(), m)
 
 		if s.shouldBackupSync {
 			if err := s.WriteBackup(s.backupWriter); err != nil {

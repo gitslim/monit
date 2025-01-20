@@ -1,12 +1,11 @@
-// Модуль для запуска сервера метрик.
+// Команда server запускает сервер метрик.
 package main
 
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"net/http"
+
 	_ "net/http/pprof"
 
 	"github.com/gitslim/monit/internal/logging"
@@ -15,16 +14,37 @@ import (
 	"github.com/gitslim/monit/internal/services"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
+func printBuildInfo() {
+	fmt.Printf("Build version: %s\n", getOrDefault(buildVersion))
+	fmt.Printf("Build date: %s\n", getOrDefault(buildDate))
+	fmt.Printf("Build commit: %s\n", getOrDefault(buildCommit))
+}
+
+func getOrDefault(value string) string {
+	if value == "" {
+		return "N/A"
+	}
+	return value
+}
+
 func main() {
+	// вывод информации о билде.
+	printBuildInfo()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
-		// Логгер еще недоступен поэтому fmt...
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
-		os.Exit(1)
+		// Логгер еще недоступен поэтому panic...
+		panic(fmt.Sprintf("Failed to initialize logger: %v\n", err))
 	}
 
 	// Парсинг конфига.
@@ -66,7 +86,10 @@ func main() {
 
 	// Запуск pprof сервера.
 	go func() {
-		http.ListenAndServe(":8081", nil)
+		err := http.ListenAndServe(":8081", nil)
+		if err != nil {
+			log.Fatalf("pprof server failed: %v", err)
+		}
 	}()
 
 	// Запуск сервера.

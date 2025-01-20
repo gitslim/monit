@@ -1,7 +1,11 @@
-// Модуль logging предназначен для управления логгированием.
+// Package logging предназначен для управления логгированием.
 package logging
 
-import "go.uber.org/zap"
+import (
+	"fmt"
+
+	"go.uber.org/zap"
+)
 
 // Logger представляет собой логгер, который использует библиотеку zap.
 type Logger struct {
@@ -10,11 +14,13 @@ type Logger struct {
 
 // NewLogger создает новый логгер.
 func NewLogger() (*Logger, error) {
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewProduction()
 	if err != nil {
 		return nil, err
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	sugar := logger.Sugar()
 
@@ -23,7 +29,10 @@ func NewLogger() (*Logger, error) {
 
 // Close закрывает логгер.
 func (l *Logger) Close() {
-	l.sugar.Sync()
+	err := l.sugar.Sync()
+	if err != nil {
+		fmt.Println("logger sync error:", err)
+	}
 }
 
 func (l *Logger) Debug(msg string, args ...interface{}) {
