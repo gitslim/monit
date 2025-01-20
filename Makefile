@@ -1,6 +1,21 @@
-.PHONY: all test coverage staticcheck autotests clean
+.PHONY: all build-server build-agent build test coverage statictest autotests lint gen godoc-server clean
 
-all: gen statictest autotests coverage
+all: gen statictest autotests coverage build
+
+BUILD_COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_DATE := $(shell git log -1 --format=%cd --date=format:"%Y%m%d")
+BUILD_VERSION := v1.0.0
+FLAGS := -ldflags "-X main.buildVersion=$(BUILD_VERSION) -X main.buildDate=$(BUILD_DATE) -X main.buildCommit=$(BUILD_COMMIT)"
+
+build-server:
+	@echo "Building server..."
+	go build -o ./cmd/server/server $(FLAGS) ./cmd/server
+
+build-agent:
+	@echo "Building agent..."
+	go build -o ./cmd/agent/agent $(FLAGS) ./cmd/agent
+
+build: build-server build-agent
 
 test:
 	@echo "Running tests..."
