@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/caarlos0/env/v6"
+	env "github.com/caarlos0/env/v6"
 )
 
 // Значения по умолчанию для конфигурации.
@@ -17,6 +17,7 @@ const (
 	DefaultRestore         = true
 	DefaultDatabaseDSN     = ""
 	DefaultKey             = ""
+	DefaultCryptoKey       = ""
 )
 
 // Config представляет конфигурацию сервера.
@@ -27,6 +28,7 @@ type Config struct {
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 }
 
 // ParseConfig парсит конфигурацию из флагов и переменных окружения.
@@ -37,6 +39,7 @@ func ParseConfig() (*Config, error) {
 	restore := flag.Bool("r", DefaultRestore, "Флаг загрузки сохраненных данных при старте сервера")
 	databaseDSN := flag.String("d", DefaultDatabaseDSN, "Строка подключения к базе данных (DSN)")
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
+	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Приватный ключ шифрования")
 
 	flag.Parse()
 
@@ -47,6 +50,7 @@ func ParseConfig() (*Config, error) {
 		Restore:         *restore,
 		DatabaseDSN:     *databaseDSN,
 		Key:             *key,
+		CryptoKey:       *cryptoKey,
 	}
 
 	// Парсинг конфига.

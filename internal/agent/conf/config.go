@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/caarlos0/env/v6"
+	env "github.com/caarlos0/env/v6"
 )
 
 // Значения по умолчанию для конфигурации.
@@ -16,6 +16,7 @@ const (
 	DefaultReportInterval = 10
 	DefaultKey            = ""
 	DefaultRateLimit      = 10
+	DefaultCryptoKey      = ""
 )
 
 // Config представляет конфигурацию агента сбора метрик.
@@ -25,6 +26,7 @@ type Config struct {
 	ReportInterval uint64 `env:"REPORT_INTERVAL"`
 	Key            string `env:"KEY"`
 	RateLimit      uint64 `env:"RATE_LIMIT"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
 }
 
 // ParseConfig парсит конфигурацию из флагов и переменных окружения.
@@ -34,6 +36,7 @@ func ParseConfig() (*Config, error) {
 	reportInterval := flag.Uint64("r", DefaultReportInterval, "Интервал отправки метрик на сервер (в секундах)")
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
 	rateLimit := flag.Uint64("l", DefaultRateLimit, "Лимит одновременно исходящих запросов на отправку метрик")
+	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Публичный ключ шифрования")
 
 	flag.Parse()
 
@@ -43,6 +46,7 @@ func ParseConfig() (*Config, error) {
 		ReportInterval: *reportInterval,
 		Key:            *key,
 		RateLimit:      *rateLimit,
+		CryptoKey:      *cryptoKey,
 	}
 
 	// Парсинг конфига.
