@@ -1,4 +1,4 @@
-package sender
+package security
 
 import (
 	"crypto/hmac"
@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-// makeHash расчитывает хэш по алгоритму SHA256.
-func makeHash(rc io.ReadCloser, key string) (string, error) {
+// MakeSHA256Hash расчитывает хэш по алгоритму SHA256.
+func MakeSHA256Hash(rc io.Reader, key string) (string, error) {
 	var buf []byte
 	_, err := rc.Read(buf)
 	if err != nil {
