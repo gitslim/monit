@@ -2,7 +2,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gitslim/monit/internal/agent"
@@ -33,9 +32,6 @@ func main() {
 	// вывод информации о билде.
 	printBuildInfo()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
@@ -49,5 +45,5 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
-	agent.Start(ctx, cfg, log)
+	agent.Start(cfg, log)
 }

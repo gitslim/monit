@@ -49,7 +49,7 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 
 	// Канал для получения сигналов.
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 	log.Info("Shutting down server...")
 
@@ -58,5 +58,5 @@ func Start(ctx context.Context, cfg *conf.Config, log *logging.Logger, metricSer
 		log.Fatalf("Server forced to shutdown:", err)
 	}
 
-	log.Info("Server exited")
+	log.Info("Monit server stopped")
 }
