@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/logging"
 )
 
@@ -18,6 +19,7 @@ func LoggerMiddleware(log *logging.Logger) gin.HandlerFunc {
 
 		// Логгируем запрос.
 		log.Info("req",
+			"ip", c.Request.Header.Get(httpconst.HeaderXRealIP),
 			"URI", c.Request.RequestURI,
 			"method", c.Request.Method,
 			"latency", latency)

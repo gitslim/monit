@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gitslim/monit/internal/agent/conf"
+	"github.com/gitslim/monit/internal/agent/transport"
 	"github.com/gitslim/monit/internal/entities"
 )
 
@@ -57,6 +58,8 @@ func NewWorkerPool(cfg *conf.Config) *WorkerPool {
 		Metrics: make(chan entities.MetricDTO, cfg.RateLimit),
 		WG:      &sync.WaitGroup{},
 		Cfg:     cfg,
-		Client:  &http.Client{},
+		Client: &http.Client{
+			Transport: transport.NewCustomTransport(), // Используем CustomTransport
+		},
 	}
 }
