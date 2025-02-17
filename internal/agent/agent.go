@@ -19,11 +19,8 @@ import (
 func Start(cfg *conf.Config, log *logging.Logger) {
 	log.Info("Monit agent started")
 
-	// Таймаут ожидания завершения работы сервера.
-	gracefulTimeout := 5 * time.Second
-
 	// Контекст для graceful shutdown с таймаутом.
-	ctx, cancel := context.WithTimeout(context.Background(), gracefulTimeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Канал для сигналов ОС.
@@ -50,12 +47,23 @@ func Start(cfg *conf.Config, log *logging.Logger) {
 	go func() {
 		quit := <-quitChan
 		log.Infof("Received signal: %v, shutting down...", quit)
-		cancel()  // Останавливаем контекст
-		wp.Stop() // Останавливаем worker'ов
+
+		// Таймаут ожидания завершения работы сервера.
+		gracefulTimeout := 15 * time.Second
+
+		// Создаём контекст с таймаутом.
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), gracefulTimeout)
+		defer timeoutCancel()
+
+		cancel()  // Завершаем работу worker'ов
+		wp.Stop() // Грейсфул-шатдаун worker'ов
+		wp.Wait() // Ожидаем завершения worker'ов
+
+		<-timeoutCtx.Done() // Гарантируем завершение через timeout
 	}()
 
-	// Ожидание завершения пула worker'ов.
-	wp.Wait()
+	// Блокируем пока не придёт сигнал завершения.
+	<-ctx.Done()
 
 	log.Info("Monit agent stopped.")
 }
