@@ -4,9 +4,6 @@ go 1.22.6
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1
-	github.com/docker/go-connections v0.5.0
-	github.com/efficientgo/core v1.0.0-rc.3
-	github.com/efficientgo/e2e v0.14.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/kisielk/errcheck v1.8.0
@@ -36,6 +33,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/docker v27.1.1+incompatible // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
@@ -48,7 +46,6 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

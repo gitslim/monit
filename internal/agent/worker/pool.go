@@ -2,6 +2,7 @@
 package worker
 
 import (
+	"context"
 	"net/http"
 	"sync"
 
@@ -15,32 +16,39 @@ type WorkerPool struct {
 	WG      *sync.WaitGroup
 	Cfg     *conf.Config
 	Client  *http.Client
+	once    sync.Once // Для безопасного закрытия канала Metrics
 }
 
-// Start запускает пул worker'ов.
-func (w *WorkerPool) Start(f func()) {
+// Start запускает пул worker'ов с поддержкой контекста.
+func (w *WorkerPool) Start(ctx context.Context, f func(ctx context.Context)) {
 	for i := 0; i < int(w.Cfg.RateLimit); i++ {
 		w.WG.Add(1)
 		go func() {
 			defer w.WG.Done()
-			f()
+			f(ctx) // Передаём контекст в worker
 		}()
 	}
 }
 
-// AddWorker добавляет worker'а в пул.
-func (w *WorkerPool) AddWorker(f func()) {
+// AddWorker добавляет worker'а в пул с поддержкой контекста.
+func (w *WorkerPool) AddWorker(ctx context.Context, f func(ctx context.Context)) {
 	w.WG.Add(1)
 	go func() {
 		defer w.WG.Done()
-		f()
+		f(ctx)
 	}()
 }
 
-// WaitClose ожидает завершения всех worker'ов и закрывает канал.
-func (w *WorkerPool) WaitClose() {
+// Stop останавливает пул worker'ов.
+func (w *WorkerPool) Stop() {
+	w.once.Do(func() {
+		close(w.Metrics) // Закрываем канал метрик
+	})
+}
+
+// Wait ожидает завершения всех worker'ов.
+func (w *WorkerPool) Wait() {
 	w.WG.Wait()
-	close(w.Metrics)
 }
 
 // NewWorkerPool создает пул worker'ов.

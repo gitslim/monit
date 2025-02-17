@@ -30,7 +30,7 @@ func getTemplateGlob() (string, error) {
 }
 
 // CreateGinEngine создает и настраивает Gin engine с использованием конфигурации, логгера, режима Gin и шаблонов HTML.
-func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metricService *services.MetricService) (g *gin.Engine, err error) {
+func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metricService *services.MetricService) (g *gin.Engine, e error) {
 	// Создаем gin engine.
 	gin.SetMode(ginMode)
 	r := gin.New()
@@ -38,12 +38,20 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 	// Обработка паники gin.
 	defer func() {
 		if rec := recover(); rec != nil {
-			err = fmt.Errorf("gin panic: %v", rec) // nolint:errcheck
+			e = fmt.Errorf("gin panic: %v", rec) // nolint:errcheck
 		}
 	}()
 
 	// Middlewares.
 	r.Use(middleware.GzipMiddleware())
+	if cfg.CryptoKey != "" {
+		log.Debug("Using decrypt middleware")
+		dmw, err := middleware.DecryptMiddleware(cfg.CryptoKey)
+		if err != nil {
+			return nil, err
+		}
+		r.Use(dmw)
+	}
 	r.Use(middleware.LoggerMiddleware(log))
 	if cfg.Key != "" {
 		log.Debug("Using signature middleware")

@@ -36,10 +36,10 @@ func TestCollectMetrics(t *testing.T) {
 	defer cancel()
 
 	// Добавление worker'ов сбора метрик.
-	wp.AddWorker(func() {
+	wp.AddWorker(ctx, func(ctx context.Context) {
 		CollectRuntimeMetrics(ctx, log, wp)
 	})
-	wp.AddWorker(func() {
+	wp.AddWorker(ctx, func(ctx context.Context) {
 		CollectSystemMetrics(ctx, log, wp)
 	})
 
@@ -48,7 +48,8 @@ func TestCollectMetrics(t *testing.T) {
 
 	// Завершаем пул worker'ов.
 	cancel()
-	wp.WaitClose()
+	wp.Stop()
+	wp.Wait()
 
 	// Забираем метрики из канала.
 	collected := make(map[string]bool)
