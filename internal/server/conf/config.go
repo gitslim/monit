@@ -21,6 +21,7 @@ const (
 	DefaultKey             = ""
 	DefaultCryptoKey       = ""
 	DefaultConfig          = ""
+	DefaultTrustedSubnet   = ""
 )
 
 // Config представляет конфигурацию сервера.
@@ -33,6 +34,7 @@ type Config struct {
 	Key             string `env:"KEY" json:"key"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 	ConfigPath      string `env:"CONFIG" json:"-"`
+	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // ParseConfig парсит конфигурацию из флагов и переменных окружения.
@@ -45,6 +47,7 @@ func ParseConfig() (*Config, error) {
 	databaseDSN := flag.String("d", DefaultDatabaseDSN, "Строка подключения к базе данных (DSN)")
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
 	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Приватный ключ шифрования")
+	trustedSubnet := flag.String("t", DefaultTrustedSubnet, "Адрес доверенной подсети в формате CIDR")
 
 	// Парсим флаги
 	flag.Parse()
@@ -58,6 +61,7 @@ func ParseConfig() (*Config, error) {
 		DatabaseDSN:     DefaultDatabaseDSN,
 		Key:             DefaultKey,
 		CryptoKey:       DefaultCryptoKey,
+		TrustedSubnet:   DefaultTrustedSubnet,
 		ConfigPath:      *configPath,
 	}
 
@@ -93,6 +97,9 @@ func ParseConfig() (*Config, error) {
 	}
 	if flag.Lookup("crypto-key").Value.String() != DefaultCryptoKey {
 		cfg.CryptoKey = *cryptoKey
+	}
+	if flag.Lookup("t").Value.String() != DefaultTrustedSubnet {
+		cfg.TrustedSubnet = *trustedSubnet
 	}
 
 	// Валидация
