@@ -19,7 +19,7 @@ build: build-server build-agent
 
 test:
 	@echo "Running tests..."
-	go test ./...
+	go test -race ./...
 
 coverage:
 	@echo "Calculating test coverage..."

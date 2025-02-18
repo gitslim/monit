@@ -1,8 +1,9 @@
 {
-    "address": "localhost:8080",
-    "restore": true,
-    "store_interval": 1,
-    "store_file": "/tmp/file.db",
-    "database_dsn": "",
-    "crypto_key": "testdata/keys/private.pem"
+  "address": "localhost:8080",
+  "restore": true,
+  "store_interval": 1,
+  "store_file": "/tmp/file.db",
+  "database_dsn": "",
+  "crypto_key": "testdata/keys/private.pem",
+  "trusted_subnet": "127.0.0.1/32"
 }

@@ -2,12 +2,12 @@ package collector
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/gitslim/monit/internal/agent/conf"
 	"github.com/gitslim/monit/internal/agent/worker"
-	"github.com/gitslim/monit/internal/entities"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,19 +20,14 @@ func TestCollectMetrics(t *testing.T) {
 		RateLimit:    5,
 	}
 
-	// Канал сбора метрик.
-	metricsCh := make(chan entities.MetricDTO, 100)
-
 	// Инициализация пула worker'ов.
 	wp := worker.NewWorkerPool(cfg)
-	wp.Metrics = metricsCh
 
 	// Создаем логгер.
 	log, err := logging.NewLogger()
 	assert.NoError(t, err)
 
-	// Контекст с таймаутом.
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Добавление worker'ов сбора метрик.
@@ -46,16 +41,19 @@ func TestCollectMetrics(t *testing.T) {
 	// Даем время на сбор метрик.
 	time.Sleep(3 * time.Second)
 
-	// Завершаем пул worker'ов.
-	cancel()
-	wp.Stop()
-	wp.Wait()
-
 	// Забираем метрики из канала.
-	collected := make(map[string]bool)
-	for metric := range metricsCh {
-		collected[metric.ID] = true
-	}
+	collected := &sync.Map{}
+	go func() {
+		for metric := range wp.Metrics {
+			collected.Store(metric.ID, true)
+		}
+	}()
+
+	// Завершаем работу worker'ов
+	cancel()
+
+	// Ждём завершения всех worker'ов.
+	wp.WaitClose()
 
 	// Список ожидаемых метрик.
 	expected := []string{
@@ -65,6 +63,7 @@ func TestCollectMetrics(t *testing.T) {
 
 	// Проверяем что все метрики собрались.
 	for _, metricName := range expected {
-		assert.Contains(t, collected, metricName, "Metric %s should be collected", metricName)
+		_, ok := collected.Load(metricName)
+		assert.True(t, ok, "Metric %s should be collected", metricName)
 	}
 }

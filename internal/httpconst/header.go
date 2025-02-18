@@ -9,6 +9,7 @@ const (
 	HeaderAuthorization   = "Authorization"
 	HeaderUserAgent       = "User-Agent"
 	HeaderHashSHA256      = "HashSHA256"
+	HeaderXRealIP         = "X-Real-IP"
 )
 
 // HTTP header values.
