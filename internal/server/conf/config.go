@@ -71,11 +71,6 @@ func ParseConfig() (*Config, error) {
 		}
 	}
 
-	// Перезаписываем значениями из переменных окружения
-	if err := env.Parse(&cfg); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга env: %w", err)
-	}
-
 	// Перезаписываем значениями флагов (если они были переданы)
 	if flag.Lookup("a").Value.String() != DefaultAddr {
 		cfg.Addr = *addr
@@ -100,6 +95,11 @@ func ParseConfig() (*Config, error) {
 	}
 	if flag.Lookup("t").Value.String() != DefaultTrustedSubnet {
 		cfg.TrustedSubnet = *trustedSubnet
+	}
+
+	// Перезаписываем значениями из переменных окружения
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("ошибка парсинга env: %w", err)
 	}
 
 	// Валидация

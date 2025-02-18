@@ -45,5 +45,7 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
+	log.Infof("Agent config: %+v", cfg)
+
 	agent.Start(cfg, log)
 }

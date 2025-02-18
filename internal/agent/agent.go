@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gitslim/monit/internal/agent/collector"
 	"github.com/gitslim/monit/internal/agent/conf"
@@ -48,22 +47,9 @@ func Start(cfg *conf.Config, log *logging.Logger) {
 		quit := <-quitChan
 		log.Infof("Received signal: %v, shutting down...", quit)
 
-		// Таймаут ожидания завершения работы сервера.
-		gracefulTimeout := 15 * time.Second
-
-		// Создаём контекст с таймаутом.
-		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), gracefulTimeout)
-		defer timeoutCancel()
-
-		cancel()  // Завершаем работу worker'ов
-		wp.Stop() // Грейсфул-шатдаун worker'ов
-		wp.Wait() // Ожидаем завершения worker'ов
-
-		<-timeoutCtx.Done() // Гарантируем завершение через timeout
+		cancel() // Отмена контекста
 	}()
 
-	// Блокируем пока не придёт сигнал завершения.
-	<-ctx.Done()
-
+	wp.WaitClose() // Ожидаем завершения worker'ов
 	log.Info("Monit agent stopped.")
 }

@@ -1,3 +1,4 @@
+// Package transport содержит реализацию кастомного Transport для http
 package transport
 
 import (
@@ -13,7 +14,7 @@ import (
 type CustomTransport struct {
 	Transport http.RoundTripper
 	ip        net.IP
-	mu        sync.Mutex
+	mu        sync.RWMutex
 }
 
 // NewCustomTransport создает кастомный Transport
@@ -47,9 +48,9 @@ func NewCustomTransport() *CustomTransport {
 
 // RoundTrip перехватывает запрос и устанавливает заголовок X-Real-IP
 func (t *CustomTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.mu.Lock()
+	t.mu.RLock()
 	ip := t.ip
-	t.mu.Unlock()
+	t.mu.RUnlock()
 
 	// Если IP установлен, добавляем заголовок X-Real-IP
 	if ip != nil {

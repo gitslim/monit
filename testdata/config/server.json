@@ -5,5 +5,5 @@
   "store_file": "/tmp/file.db",
   "database_dsn": "",
   "crypto_key": "testdata/keys/private.pem",
-  "trusted_subnet": "192.168.0.0/16"
+  "trusted_subnet": "127.0.0.1/32"
 }

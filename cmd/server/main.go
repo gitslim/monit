@@ -53,7 +53,7 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
-	log.Debugf("Server config: %+v", cfg)
+	log.Infof("Server config: %+v", cfg)
 
 	// Инициализация хранилища.
 	var metricConf services.MetricServiceConf

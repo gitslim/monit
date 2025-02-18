@@ -40,16 +40,15 @@ func (w *WorkerPool) AddWorker(ctx context.Context, f func(ctx context.Context))
 	}()
 }
 
-// Stop останавливает пул worker'ов.
-func (w *WorkerPool) Stop() {
-	w.once.Do(func() {
-		close(w.Metrics) // Закрываем канал метрик
-	})
-}
-
-// Wait ожидает завершения всех worker'ов.
-func (w *WorkerPool) Wait() {
+// WaitClose ожидает завершения всех worker'ов и закрывает канал метрик.
+func (w *WorkerPool) WaitClose() {
+	// Ожидаем завершения всех worker'ов
 	w.WG.Wait()
+
+	// Закрываем канал метрик
+	w.once.Do(func() {
+		close(w.Metrics)
+	})
 }
 
 // NewWorkerPool создает пул worker'ов.
