@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
-	"github.com/gitslim/monit/internal/server/engine"
+	"github.com/gitslim/monit/internal/server/httpengine"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -79,7 +79,7 @@ func CreateServerMock(withPostgres bool) (*gin.Engine, func(), error) {
 		return nil, nil, err
 	}
 
-	engine, err := engine.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
+	engine, err := httpengine.CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,7 +90,7 @@ func StartServerMock(r *gin.Engine) (*http.Server, func(), error) {
 	// Создаем листенер на свободном порту.
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 
 	// создаем сервер

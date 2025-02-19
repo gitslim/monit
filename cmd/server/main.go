@@ -4,13 +4,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	_ "net/http/pprof"
 
 	"github.com/gitslim/monit/internal/logging"
-	"github.com/gitslim/monit/internal/server"
 	"github.com/gitslim/monit/internal/server/conf"
+	"github.com/gitslim/monit/internal/server/grpcengine"
+	"github.com/gitslim/monit/internal/server/httpengine"
 	"github.com/gitslim/monit/internal/services"
 )
 
@@ -34,11 +38,11 @@ func getOrDefault(value string) string {
 }
 
 func main() {
-	// вывод информации о билде.
+	// Вывод информации о билде.
 	printBuildInfo()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	defer stop()
 
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
@@ -53,7 +57,7 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
-	log.Infof("Server config: %+v", cfg)
+	log.Infof("Monit server config: %+v", cfg)
 
 	// Инициализация хранилища.
 	var metricConf services.MetricServiceConf
@@ -69,12 +73,13 @@ func main() {
 		metricConf, err = services.WithMemStorage(ctx, log, cfg, errCh)
 		if err != nil {
 			log.Fatalf("Memory storage configuration failed: %v", err)
+
 		}
 
 		// Обработка ошибки бэкапа.
 		go func() {
 			<-errCh
-			cancel()
+			stop()
 		}()
 	}
 
@@ -84,14 +89,18 @@ func main() {
 		log.Fatalf("Metric service initialization failed: %v", err)
 	}
 
-	// Запуск pprof сервера.
-	go func() {
-		err := http.ListenAndServe(":8081", nil)
-		if err != nil {
-			log.Fatalf("pprof server failed: %v", err)
-		}
-	}()
+	var wg sync.WaitGroup
 
-	// Запуск сервера.
-	server.Start(ctx, cfg, log, svc)
+	// Запуск http сервера.
+	wg.Add(1)
+	if cfg.GRPC {
+		go grpcengine.StartGRPCServer(ctx, cfg, log, &wg, svc)
+	} else {
+		go httpengine.StartHTTPServer(ctx, cfg, log, &wg, svc)
+	}
+
+	// Ожидание завершения.
+	wg.Wait()
+
+	log.Info("Monit stopped")
 }

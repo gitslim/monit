@@ -1,12 +1,16 @@
-// Package engine предоставляет функции для создания и настройки Gin engine.
-package engine
+// Package httpengine предоставляет функции для создания и настройки Gin engine.
+package httpengine
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
@@ -88,4 +92,45 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 	r.GET("/ping", metricHandler.PingStorage)
 
 	return r, err
+}
+
+// StartHTTPServer запускает http сервер.
+func StartHTTPServer(ctx context.Context, cfg *conf.Config, log *logging.Logger, wg *sync.WaitGroup, metricService *services.MetricService) {
+	defer wg.Done()
+
+	// Создание gin engine.
+	r, err := CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
+	if err != nil {
+		log.Fatalf("HTTP server failed to create gin engine: %v\n", err)
+	}
+
+	// Регистрация pprof.
+	pprof.Register(r)
+
+	// Создаем сервер.
+	srv := &http.Server{
+		Addr:    cfg.Addr,
+		Handler: r,
+	}
+
+	// Запуск сервера в горутине.
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed to start: %v\n", err)
+		}
+	}()
+
+	log.Infof("HTTP server is running on %v\n", cfg.Addr)
+
+	// Ожидаем сигнал завершения.
+	<-ctx.Done()
+
+	// Инициируем graceful shutdown.
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("HTTP server forced to shutdown:", err)
+		return
+	}
+
+	log.Info("HTTP server stopped gracefully.")
+
 }

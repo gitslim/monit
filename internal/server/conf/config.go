@@ -22,6 +22,7 @@ const (
 	DefaultCryptoKey       = ""
 	DefaultConfig          = ""
 	DefaultTrustedSubnet   = ""
+	DefaultGRPC            = false
 )
 
 // Config представляет конфигурацию сервера.
@@ -35,6 +36,7 @@ type Config struct {
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 	ConfigPath      string `env:"CONFIG" json:"-"`
 	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	GRPC            bool   `env:"GRPC" json:"grpc"`
 }
 
 // ParseConfig парсит конфигурацию из флагов и переменных окружения.
@@ -48,6 +50,7 @@ func ParseConfig() (*Config, error) {
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
 	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Приватный ключ шифрования")
 	trustedSubnet := flag.String("t", DefaultTrustedSubnet, "Адрес доверенной подсети в формате CIDR")
+	grpc := flag.Bool("grpc", DefaultGRPC, "Флаг использования gRPC вместо HTTP")
 
 	// Парсим флаги
 	flag.Parse()
@@ -62,6 +65,7 @@ func ParseConfig() (*Config, error) {
 		Key:             DefaultKey,
 		CryptoKey:       DefaultCryptoKey,
 		TrustedSubnet:   DefaultTrustedSubnet,
+		GRPC:            DefaultGRPC,
 		ConfigPath:      *configPath,
 	}
 
@@ -95,6 +99,9 @@ func ParseConfig() (*Config, error) {
 	}
 	if flag.Lookup("t").Value.String() != DefaultTrustedSubnet {
 		cfg.TrustedSubnet = *trustedSubnet
+	}
+	if flag.Lookup("grpc").Value.String() != fmt.Sprint(DefaultGRPC) {
+		cfg.GRPC = *grpc
 	}
 
 	// Перезаписываем значениями из переменных окружения
