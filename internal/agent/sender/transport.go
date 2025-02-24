@@ -1,5 +1,4 @@
-// Package transport содержит реализацию кастомного Transport для http
-package transport
+package sender
 
 import (
 	"context"

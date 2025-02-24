@@ -21,7 +21,8 @@ func TestCollectMetrics(t *testing.T) {
 	}
 
 	// Инициализация пула worker'ов.
-	wp := worker.NewWorkerPool(cfg)
+	wp, err := worker.NewWorkerPool(cfg)
+	assert.NoError(t, err)
 
 	// Создаем логгер.
 	log, err := logging.NewLogger()

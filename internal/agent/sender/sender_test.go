@@ -37,7 +37,7 @@ func TestSendMetrics(t *testing.T) {
 	sendFunc := func(data string, batch bool) error {
 		metrics, err := testhelpers.JSONToMetricDTO(data)
 		assert.NoError(t, err)
-		return sender.SendMetrics(context.Background(), cfg, client, metrics, batch)
+		return sender.HTTPSendMetrics(context.Background(), cfg, client, metrics, batch)
 	}
 
 	tests := []struct {

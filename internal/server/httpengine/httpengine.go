@@ -101,7 +101,7 @@ func StartHTTPServer(ctx context.Context, cfg *conf.Config, log *logging.Logger,
 	// Создание gin engine.
 	r, err := CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
 	if err != nil {
-		log.Fatalf("HTTP server failed to create gin engine: %v\n", err)
+		log.Fatalf("HTTP server failed to create gin engine: %v", err)
 	}
 
 	// Регистрация pprof.
@@ -116,11 +116,11 @@ func StartHTTPServer(ctx context.Context, cfg *conf.Config, log *logging.Logger,
 	// Запуск сервера в горутине.
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed to start: %v\n", err)
+			log.Fatalf("HTTP server failed to start: %v", err)
 		}
 	}()
 
-	log.Infof("HTTP server is running on %v\n", cfg.Addr)
+	log.Infof("HTTP server is running on %v", cfg.Addr)
 
 	// Ожидаем сигнал завершения.
 	<-ctx.Done()

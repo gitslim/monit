@@ -14,6 +14,7 @@ import (
 // Значения по умолчанию для конфигурации.
 const (
 	DefaultAddr            = "localhost:8080"
+	DefaultGRPCAddr        = "localhost:9090"
 	DefaultStoreInterval   = 300
 	DefaultFileStoragePath = "/tmp/.monit/memstorage.json"
 	DefaultRestore         = true
@@ -22,12 +23,12 @@ const (
 	DefaultCryptoKey       = ""
 	DefaultConfig          = ""
 	DefaultTrustedSubnet   = ""
-	DefaultGRPC            = false
 )
 
 // Config представляет конфигурацию сервера.
 type Config struct {
 	Addr            string `env:"ADDRESS" json:"address"`
+	GRPCAddr        string `env:"GRPC_ADDRESS" json:"grpc_address"`
 	StoreInterval   uint64 `env:"STORE_INTERVAL" json:"store_interval"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH" json:"file_storage_path"`
 	Restore         bool   `env:"RESTORE" json:"restore"`
@@ -36,13 +37,13 @@ type Config struct {
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 	ConfigPath      string `env:"CONFIG" json:"-"`
 	TrustedSubnet   string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
-	GRPC            bool   `env:"GRPC" json:"grpc"`
 }
 
 // ParseConfig парсит конфигурацию из флагов и переменных окружения.
 func ParseConfig() (*Config, error) {
 	configPath := flag.String("config", DefaultConfig, "Путь до конфигурационного файла (JSON)")
 	addr := flag.String("a", DefaultAddr, "Адрес сервера (в формате host:port)")
+	grpcAddr := flag.String("g", DefaultGRPCAddr, "Адрес gRPC сервера (в формате host:port)")
 	storeInterval := flag.Uint64("i", DefaultStoreInterval, "Интервал сохранения данных на диск (в секундах)")
 	fileStoragePath := flag.String("f", DefaultFileStoragePath, "Путь до файла сохранения данных")
 	restore := flag.Bool("r", DefaultRestore, "Флаг загрузки сохраненных данных при старте сервера")
@@ -50,7 +51,6 @@ func ParseConfig() (*Config, error) {
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
 	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Приватный ключ шифрования")
 	trustedSubnet := flag.String("t", DefaultTrustedSubnet, "Адрес доверенной подсети в формате CIDR")
-	grpc := flag.Bool("grpc", DefaultGRPC, "Флаг использования gRPC вместо HTTP")
 
 	// Парсим флаги
 	flag.Parse()
@@ -58,6 +58,7 @@ func ParseConfig() (*Config, error) {
 	// Загружаем конфиг из JSON если путь указан
 	cfg := Config{
 		Addr:            DefaultAddr,
+		GRPCAddr:        DefaultGRPCAddr,
 		StoreInterval:   DefaultStoreInterval,
 		FileStoragePath: DefaultFileStoragePath,
 		Restore:         DefaultRestore,
@@ -65,7 +66,6 @@ func ParseConfig() (*Config, error) {
 		Key:             DefaultKey,
 		CryptoKey:       DefaultCryptoKey,
 		TrustedSubnet:   DefaultTrustedSubnet,
-		GRPC:            DefaultGRPC,
 		ConfigPath:      *configPath,
 	}
 
@@ -78,6 +78,9 @@ func ParseConfig() (*Config, error) {
 	// Перезаписываем значениями флагов (если они были переданы)
 	if flag.Lookup("a").Value.String() != DefaultAddr {
 		cfg.Addr = *addr
+	}
+	if flag.Lookup("g").Value.String() != DefaultGRPCAddr {
+		cfg.GRPCAddr = *grpcAddr
 	}
 	if flag.Lookup("i").Value.String() != fmt.Sprint(DefaultStoreInterval) {
 		cfg.StoreInterval = *storeInterval
@@ -99,9 +102,6 @@ func ParseConfig() (*Config, error) {
 	}
 	if flag.Lookup("t").Value.String() != DefaultTrustedSubnet {
 		cfg.TrustedSubnet = *trustedSubnet
-	}
-	if flag.Lookup("grpc").Value.String() != fmt.Sprint(DefaultGRPC) {
-		cfg.GRPC = *grpc
 	}
 
 	// Перезаписываем значениями из переменных окружения

@@ -16,16 +16,17 @@ type MonitServer struct {
 	pb.UnimplementedMonitServer
 	cfg *conf.Config
 	log *logging.Logger
+	svc *services.MetricService
 }
 
 func StartGRPCServer(ctx context.Context, cfg *conf.Config, log *logging.Logger, wg *sync.WaitGroup, metricService *services.MetricService) {
 	defer wg.Done()
 
 	// Создаем сервис gRPC
-	s := &MonitServer{cfg: cfg, log: log}
+	s := &MonitServer{cfg: cfg, log: log, svc: metricService}
 
 	// Создаем TCP-сокет
-	lis, err := net.Listen("tcp", s.cfg.Addr)
+	lis, err := net.Listen("tcp", s.cfg.GRPCAddr)
 	if err != nil {
 		s.log.Fatalf("gRPC server failed to listen: %v", err)
 	}
@@ -42,7 +43,7 @@ func StartGRPCServer(ctx context.Context, cfg *conf.Config, log *logging.Logger,
 		}
 	}()
 
-	s.log.Infof("gRPC server is running on %s", cfg.Addr)
+	s.log.Infof("gRPC server is running on %s", cfg.GRPCAddr)
 
 	// Ожидаем сигнал завершения.
 	<-ctx.Done()

@@ -91,16 +91,16 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	// Запуск gRPC сервера.
+	wg.Add(1)
+	go grpcengine.StartGRPCServer(ctx, cfg, log, &wg, svc)
+
 	// Запуск http сервера.
 	wg.Add(1)
-	if cfg.GRPC {
-		go grpcengine.StartGRPCServer(ctx, cfg, log, &wg, svc)
-	} else {
-		go httpengine.StartHTTPServer(ctx, cfg, log, &wg, svc)
-	}
+	go httpengine.StartHTTPServer(ctx, cfg, log, &wg, svc)
 
 	// Ожидание завершения.
 	wg.Wait()
 
-	log.Info("Monit stopped")
+	log.Info("Server stopped")
 }

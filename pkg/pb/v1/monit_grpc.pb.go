@@ -19,16 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Monit_UpdateMetric_FullMethodName = "/gitslim.monit.pb.v1.Monit/UpdateMetric"
-	Monit_GetMetrics_FullMethodName   = "/gitslim.monit.pb.v1.Monit/GetMetrics"
+	Monit_ListMetrics_FullMethodName   = "/gitslim.monit.pb.v1.Monit/ListMetrics"
+	Monit_GetMetric_FullMethodName     = "/gitslim.monit.pb.v1.Monit/GetMetric"
+	Monit_UpdateMetric_FullMethodName  = "/gitslim.monit.pb.v1.Monit/UpdateMetric"
+	Monit_UpdateMetrics_FullMethodName = "/gitslim.monit.pb.v1.Monit/UpdateMetrics"
+	Monit_PingStorage_FullMethodName   = "/gitslim.monit.pb.v1.Monit/PingStorage"
 )
 
 // MonitClient is the client API for Monit service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MonitClient interface {
+	ListMetrics(ctx context.Context, in *ListMetricsRequest, opts ...grpc.CallOption) (*ListMetricsResponse, error)
+	GetMetric(ctx context.Context, in *GetMetricRequest, opts ...grpc.CallOption) (*GetMetricResponse, error)
 	UpdateMetric(ctx context.Context, in *UpdateMetricRequest, opts ...grpc.CallOption) (*UpdateMetricResponse, error)
-	GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error)
+	UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error)
+	PingStorage(ctx context.Context, in *PingStorageRequest, opts ...grpc.CallOption) (*PingStorageResponse, error)
 }
 
 type monitClient struct {
@@ -37,6 +43,26 @@ type monitClient struct {
 
 func NewMonitClient(cc grpc.ClientConnInterface) MonitClient {
 	return &monitClient{cc}
+}
+
+func (c *monitClient) ListMetrics(ctx context.Context, in *ListMetricsRequest, opts ...grpc.CallOption) (*ListMetricsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMetricsResponse)
+	err := c.cc.Invoke(ctx, Monit_ListMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitClient) GetMetric(ctx context.Context, in *GetMetricRequest, opts ...grpc.CallOption) (*GetMetricResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMetricResponse)
+	err := c.cc.Invoke(ctx, Monit_GetMetric_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *monitClient) UpdateMetric(ctx context.Context, in *UpdateMetricRequest, opts ...grpc.CallOption) (*UpdateMetricResponse, error) {
@@ -49,10 +75,20 @@ func (c *monitClient) UpdateMetric(ctx context.Context, in *UpdateMetricRequest,
 	return out, nil
 }
 
-func (c *monitClient) GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error) {
+func (c *monitClient) UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetMetricsResponse)
-	err := c.cc.Invoke(ctx, Monit_GetMetrics_FullMethodName, in, out, cOpts...)
+	out := new(UpdateMetricsResponse)
+	err := c.cc.Invoke(ctx, Monit_UpdateMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *monitClient) PingStorage(ctx context.Context, in *PingStorageRequest, opts ...grpc.CallOption) (*PingStorageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PingStorageResponse)
+	err := c.cc.Invoke(ctx, Monit_PingStorage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +99,11 @@ func (c *monitClient) GetMetrics(ctx context.Context, in *GetMetricsRequest, opt
 // All implementations must embed UnimplementedMonitServer
 // for forward compatibility.
 type MonitServer interface {
+	ListMetrics(context.Context, *ListMetricsRequest) (*ListMetricsResponse, error)
+	GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error)
 	UpdateMetric(context.Context, *UpdateMetricRequest) (*UpdateMetricResponse, error)
-	GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error)
+	UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error)
+	PingStorage(context.Context, *PingStorageRequest) (*PingStorageResponse, error)
 	mustEmbedUnimplementedMonitServer()
 }
 
@@ -75,11 +114,20 @@ type MonitServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMonitServer struct{}
 
+func (UnimplementedMonitServer) ListMetrics(context.Context, *ListMetricsRequest) (*ListMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMetrics not implemented")
+}
+func (UnimplementedMonitServer) GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMetric not implemented")
+}
 func (UnimplementedMonitServer) UpdateMetric(context.Context, *UpdateMetricRequest) (*UpdateMetricResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMetric not implemented")
 }
-func (UnimplementedMonitServer) GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetMetrics not implemented")
+func (UnimplementedMonitServer) UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateMetrics not implemented")
+}
+func (UnimplementedMonitServer) PingStorage(context.Context, *PingStorageRequest) (*PingStorageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PingStorage not implemented")
 }
 func (UnimplementedMonitServer) mustEmbedUnimplementedMonitServer() {}
 func (UnimplementedMonitServer) testEmbeddedByValue()               {}
@@ -102,6 +150,42 @@ func RegisterMonitServer(s grpc.ServiceRegistrar, srv MonitServer) {
 	s.RegisterService(&Monit_ServiceDesc, srv)
 }
 
+func _Monit_ListMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMetricsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitServer).ListMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Monit_ListMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitServer).ListMetrics(ctx, req.(*ListMetricsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Monit_GetMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMetricRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitServer).GetMetric(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Monit_GetMetric_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitServer).GetMetric(ctx, req.(*GetMetricRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Monit_UpdateMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateMetricRequest)
 	if err := dec(in); err != nil {
@@ -120,20 +204,38 @@ func _Monit_UpdateMetric_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Monit_GetMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMetricsRequest)
+func _Monit_UpdateMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMetricsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MonitServer).GetMetrics(ctx, in)
+		return srv.(MonitServer).UpdateMetrics(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Monit_GetMetrics_FullMethodName,
+		FullMethod: Monit_UpdateMetrics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MonitServer).GetMetrics(ctx, req.(*GetMetricsRequest))
+		return srv.(MonitServer).UpdateMetrics(ctx, req.(*UpdateMetricsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Monit_PingStorage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingStorageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MonitServer).PingStorage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Monit_PingStorage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MonitServer).PingStorage(ctx, req.(*PingStorageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -146,12 +248,24 @@ var Monit_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MonitServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "ListMetrics",
+			Handler:    _Monit_ListMetrics_Handler,
+		},
+		{
+			MethodName: "GetMetric",
+			Handler:    _Monit_GetMetric_Handler,
+		},
+		{
 			MethodName: "UpdateMetric",
 			Handler:    _Monit_UpdateMetric_Handler,
 		},
 		{
-			MethodName: "GetMetrics",
-			Handler:    _Monit_GetMetrics_Handler,
+			MethodName: "UpdateMetrics",
+			Handler:    _Monit_UpdateMetrics_Handler,
+		},
+		{
+			MethodName: "PingStorage",
+			Handler:    _Monit_PingStorage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

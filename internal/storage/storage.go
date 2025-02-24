@@ -7,7 +7,7 @@ import (
 // Storager определяет интерфейс для работы с хранилищем метрик.
 type Storager interface {
 	// UpdadateOrCreateMetric обновляет или создает метрику.
-	UpdateOrCreateMetric(mName string, mType entities.MetricType, mValue interface{}) error
+	UpdateOrCreateMetric(entities.MetricDTO) error
 	// BatchUpdateOrCreateMetrics обновляет или создает метрики.
 	BatchUpdateOrCreateMetrics([]*entities.MetricDTO) error
 	// GetMetric получает метрику.
