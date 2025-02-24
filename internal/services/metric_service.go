@@ -3,11 +3,9 @@ package services
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/gitslim/monit/internal/entities"
-	"github.com/gitslim/monit/internal/errs"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
 	"github.com/gitslim/monit/internal/storage"
@@ -89,36 +87,8 @@ func (s *MetricService) GetMetric(mName string, mType string) (entities.Metric, 
 }
 
 // UpdateMetric обновляет метрику.
-func (s *MetricService) UpdateMetric(mName, mType, mValue string) error {
-	var v interface{}
-
-	if mName == "" || mType == "" || mValue == "" {
-		return errs.ErrMetricNotFound
-	}
-
-	t, err := entities.GetMetricType(mType)
-	if err != nil {
-		return err
-	}
-
-	switch t {
-	case entities.Gauge:
-		val, err := strconv.ParseFloat(mValue, 64)
-		if err != nil {
-			return errs.ErrInvalidMetricValue
-		}
-		v = val
-	case entities.Counter:
-		val, err := strconv.ParseInt(mValue, 10, 64)
-		if err != nil {
-			return errs.ErrInvalidMetricValue
-		}
-		v = val
-	default:
-		return errs.ErrInvalidMetricType
-	}
-
-	return s.storage.UpdateOrCreateMetric(mName, t, v)
+func (s *MetricService) UpdateMetric(dto entities.MetricDTO) error {
+	return s.storage.UpdateOrCreateMetric(dto)
 }
 
 // BatchUpdateMetrics обновляет метрики в хранилище батчами.

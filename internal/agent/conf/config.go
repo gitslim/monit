@@ -20,6 +20,7 @@ const (
 	DefaultRateLimit      = 10
 	DefaultCryptoKey      = ""
 	DefaultConfig         = ""
+	DefaultGRPC           = false
 )
 
 // Config представляет конфигурацию агента сбора метрик.
@@ -31,6 +32,7 @@ type Config struct {
 	RateLimit      uint64 `env:"RATE_LIMIT" json:"rate_limit"`
 	CryptoKey      string `env:"CRYPTO_KEY" json:"crypto_key"`
 	ConfigPath     string `env:"CONFIG" json:"-"`
+	GRPC           bool   `env:"GRPC" json:"grpc"`
 }
 
 // ParseConfig парсит конфигурацию из json-конфига, флагов и переменных окружения.
@@ -42,6 +44,7 @@ func ParseConfig() (*Config, error) {
 	key := flag.String("k", DefaultKey, "Ключ шифрования")
 	rateLimit := flag.Uint64("l", DefaultRateLimit, "Лимит запросов")
 	cryptoKey := flag.String("crypto-key", DefaultCryptoKey, "Публичный ключ шифрования")
+	grpc := flag.Bool("grpc", DefaultGRPC, "Флаг использования gRPC вместо HTTP")
 
 	// Парсим флаги
 	flag.Parse()
@@ -54,6 +57,7 @@ func ParseConfig() (*Config, error) {
 		Key:            DefaultKey,
 		RateLimit:      DefaultRateLimit,
 		CryptoKey:      DefaultCryptoKey,
+		GRPC:           DefaultGRPC,
 		ConfigPath:     *configPath,
 	}
 
@@ -61,11 +65,6 @@ func ParseConfig() (*Config, error) {
 		if err := loadConfigFromJSON(*configPath, &cfg); err != nil {
 			return nil, err
 		}
-	}
-
-	// Перезаписываем значениями из переменных окружения
-	if err := env.Parse(&cfg); err != nil {
-		return nil, fmt.Errorf("ошибка парсинга env: %w", err)
 	}
 
 	// Перезаписываем значениями флагов (если они были переданы)
@@ -86,6 +85,14 @@ func ParseConfig() (*Config, error) {
 	}
 	if flag.Lookup("crypto-key").Value.String() != DefaultCryptoKey {
 		cfg.CryptoKey = *cryptoKey
+	}
+	if flag.Lookup("grpc").Value.String() != fmt.Sprint(DefaultGRPC) {
+		cfg.GRPC = *grpc
+	}
+
+	// Перезаписываем значениями из переменных окружения
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("ошибка парсинга env: %w", err)
 	}
 
 	// Валидация

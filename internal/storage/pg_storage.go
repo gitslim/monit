@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/gitslim/monit/internal/entities"
@@ -57,63 +57,6 @@ func init() {
 	loadQueries()
 }
 
-// MarshalJSON возвращает JSON-объект с метриками из хранилища.
-func (s *PGStorage) MarshalJSON() ([]byte, error) {
-	tmp := make(map[string]interface{})
-
-	metrics, err := s.GetAllMetrics()
-	if err != nil {
-		return nil, err
-	}
-
-	for name, metric := range metrics {
-		tmp[name] = map[string]interface{}{
-			"name":  metric.GetName(),
-			"value": metric.GetValue(),
-			"type":  metric.GetType(),
-		}
-	}
-
-	return json.Marshal(tmp)
-}
-
-// UnmarshalJSON обновляет значения метрик из JSON-объекта и сохраняет их в хранилище.
-func (s *PGStorage) UnmarshalJSON(data []byte) error {
-	var temp map[string]json.RawMessage
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-
-	for name, raw := range temp {
-		var metricType struct {
-			Type entities.MetricType `json:"type"`
-		}
-		if err := json.Unmarshal(raw, &metricType); err != nil {
-			return err
-		}
-
-		switch metricType.Type {
-		case entities.Gauge:
-			var gauge entities.GaugeMetric
-			if err := json.Unmarshal(raw, &gauge); err == nil {
-				if err := s.UpdateOrCreateMetric(name, metricType.Type, gauge); err != nil {
-					return errs.ErrInternal
-				}
-			}
-		case entities.Counter:
-			var counter entities.CounterMetric
-			if err := json.Unmarshal(raw, &counter); err == nil {
-				if err := s.UpdateOrCreateMetric(name, metricType.Type, counter); err != nil {
-					return errs.ErrInternal
-				}
-			}
-		default:
-			return errs.ErrInvalidMetricType
-		}
-	}
-	return nil
-}
-
 // NewPGStorage возвращает экземпляр хранилища с подключением к базе данных.
 func NewPGStorage(pool *pgxpool.Pool) *PGStorage {
 	return &PGStorage{
@@ -122,27 +65,19 @@ func NewPGStorage(pool *pgxpool.Pool) *PGStorage {
 }
 
 // UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее (Upsert).
-func (s *PGStorage) UpdateOrCreateMetric(name string, metricType entities.MetricType, value interface{}) error {
+func (s *PGStorage) UpdateOrCreateMetric(dto entities.MetricDTO) error {
 	return retry.Retry(func() error {
 		ctx := context.Background()
 
-		switch metricType {
-		case entities.Gauge:
-			v, ok := value.(float64)
-			if !ok {
-				return errs.ErrInvalidMetricValue
-			}
-			_, err := s.db.Exec(ctx, UpsertGaugeQuery, name, metricType.String(), v)
+		switch dto.MType {
+		case entities.Gauge.String():
+			_, err := s.db.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
 			if err != nil {
 				return errs.ErrInternal
 			}
 
-		case entities.Counter:
-			v, ok := value.(int64)
-			if !ok {
-				return errs.ErrInvalidMetricValue
-			}
-			_, err := s.db.Exec(ctx, UpsertCounterQuery, name, metricType.String(), v)
+		case entities.Counter.String():
+			_, err := s.db.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
 			if err != nil {
 				return errs.ErrInternal
 			}
@@ -300,8 +235,13 @@ func CreatePGSchema(ctx context.Context, db *pgxpool.Pool) error {
 
 // BatchUpdateOrCreateMetrics обновляет метрики в базе данных или создает их, если они не существуют.
 func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
+	// Сортируем метрики по ID перед обновлением для избежания дедлоков бд.
+	sort.SliceStable(metrics, func(i, j int) bool {
+		return metrics[i].ID < metrics[j].ID
+	})
+
 	return retry.Retry(func() error {
-		ctx := context.TODO()
+		ctx := context.Background()
 
 		// Начинаем транзакцию.
 		tx, err := s.db.Begin(ctx)
@@ -318,20 +258,19 @@ func (s *PGStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) er
 		for _, dto := range metrics {
 			mType, err2 := entities.GetMetricType(dto.MType)
 			if err2 != nil {
-				fmt.Printf("Bad metric type: %v\n", err2)
 				continue
 			}
 			switch mType {
 			case entities.Gauge:
 				_, err = tx.Exec(ctx, UpsertGaugeQuery, dto.ID, dto.MType, dto.Value)
 				if err != nil {
-					return errs.ErrInternal
+					return fmt.Errorf("failed to upsert gauge: %w", err)
 				}
 
 			case entities.Counter:
 				_, err = tx.Exec(ctx, UpsertCounterQuery, dto.ID, dto.MType, dto.Delta)
 				if err != nil {
-					return errs.ErrInternal
+					return fmt.Errorf("failed to upsert counter: %w", err)
 				}
 
 			default:

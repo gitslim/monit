@@ -2,7 +2,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gitslim/monit/internal/agent"
 	"github.com/gitslim/monit/internal/agent/conf"
@@ -32,6 +36,10 @@ func main() {
 	// вывод информации о билде.
 	printBuildInfo()
 
+	// Контекст для обработки сигналов.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	defer stop()
+
 	// Инициализация логгера.
 	log, err := logging.NewLogger()
 	if err != nil {
@@ -45,5 +53,7 @@ func main() {
 		log.Fatalf("Config parse failed: %v", err)
 	}
 
-	agent.Start(cfg, log)
+	log.Infof("Agent config: %+v", cfg)
+
+	agent.Start(ctx, cfg, log)
 }

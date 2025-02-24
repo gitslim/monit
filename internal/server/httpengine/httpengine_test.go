@@ -1,5 +1,5 @@
-// Package engine_test содержит тесты для пакета engine.
-package engine_test
+// Package httpengine_test содержит тесты для пакета httpengine.
+package httpengine_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/logging"
 	"github.com/gitslim/monit/internal/server/conf"
-	"github.com/gitslim/monit/internal/server/engine"
+	"github.com/gitslim/monit/internal/server/httpengine"
 	"github.com/gitslim/monit/internal/services"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,7 +50,7 @@ func TestCreateGinEngine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := engine.CreateGinEngine(tt.cfg, tt.log, tt.ginMode, tt.metricService)
+			got, gotErr := httpengine.CreateGinEngine(tt.cfg, tt.log, tt.ginMode, tt.metricService)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("CreateGinEngine() failed: %v", gotErr)

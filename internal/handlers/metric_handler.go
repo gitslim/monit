@@ -3,9 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/entities"
@@ -31,7 +30,6 @@ func isJSONRequest(c *gin.Context) bool {
 
 // writeError записывает ошибку в ответ сервера.
 func writeError(c *gin.Context, err error) {
-	fmt.Printf("Error: %v\n", err)
 	var e *errs.Error
 	if errors.As(err, &e) {
 		if isJSONRequest(c) {
@@ -50,51 +48,81 @@ func writeError(c *gin.Context, err error) {
 	}
 }
 
-// UpdateMetric обновляет метрику.
-func (h *MetricHandler) UpdateMetric(c *gin.Context) {
-	var mType, mName, mValue string
+// req2MetricDTO возвращает MetricDTO из запроса.
+func req2MetricDTO(c *gin.Context) (*entities.MetricDTO, error) {
 
 	if isJSONRequest(c) {
-		dto := &entities.MetricDTO{}
-		if err := json.NewDecoder(c.Request.Body).Decode(dto); err != nil {
-			writeError(c, errs.ErrBadRequest)
-			return
+		jsonBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			return nil, err
 		}
-
-		mType, mName = dto.MType, dto.ID
-		switch mType {
-		case "counter":
-			if dto.Delta == nil {
-				writeError(c, errs.ErrBadRequest)
-				return
-			}
-			mValue = strconv.FormatInt(*dto.Delta, 10)
-		case "gauge":
-			if dto.Value == nil {
-				writeError(c, errs.ErrBadRequest)
-				return
-			}
-			mValue = strconv.FormatFloat(*dto.Value, 'f', -1, 64)
-		default:
-			writeError(c, errs.ErrBadRequest)
-			return
+		var dto entities.MetricDTO
+		if err := json.Unmarshal(jsonBytes, &dto); err != nil {
+			return nil, err
 		}
+		return &dto, nil
 	} else {
-		mType, mName, mValue = c.Param("type"), c.Param("name"), c.Param("value")
+		mName := c.Param("name")
+		mType := c.Param("type")
+		mValue := c.Param("value")
+		dto, err := entities.NewMetricDTO(mName, mType, mValue)
+		if err != nil {
+			return nil, err
+		}
+		return dto, nil
+	}
+}
+
+// req2MetricRequestDTO возвращает MetricRequestDTO из запроса
+func req2MetricRequestDTO(c *gin.Context) (*entities.MetricRequestDTO, error) {
+
+	if isJSONRequest(c) {
+		jsonBytes, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			return nil, err
+		}
+		var dto entities.MetricRequestDTO
+		if err := json.Unmarshal(jsonBytes, &dto); err != nil {
+			return nil, err
+		}
+		return &dto, nil
+	} else {
+		mName := c.Param("name")
+		mType := c.Param("type")
+		dto, err := entities.NewMetricRequestDTO(mName, mType)
+		if err != nil {
+			return nil, err
+		}
+		return dto, nil
+	}
+}
+
+// UpdateMetric обновляет метрику.
+func (h *MetricHandler) UpdateMetric(c *gin.Context) {
+
+	dto, err := req2MetricDTO(c)
+	if err != nil {
+		writeError(c, errs.ErrBadRequest)
+		return
 	}
 
-	if err := h.metricService.UpdateMetric(mName, mType, mValue); err != nil {
+	if dto.ID == "" {
+		writeError(c, errs.ErrMetricNotFound)
+		return
+	}
+
+	if err = h.metricService.UpdateMetric(*dto); err != nil {
 		writeError(c, err)
 		return
 	}
 
 	if isJSONRequest(c) {
-		metric, err := h.metricService.GetMetric(mName, mType)
+		metric, err := h.metricService.GetMetric(dto.ID, dto.MType)
 		if err != nil {
 			writeError(c, err)
 			return
 		}
-		dto, err := entities.NewMetricDTO(metric.GetName(), metric.GetType().String(), metric.GetValue())
+		dto, err = entities.NewMetricDTO(metric.GetName(), metric.GetType().String(), metric.GetValue())
 		if err != nil {
 			writeError(c, err)
 			return
@@ -103,57 +131,45 @@ func (h *MetricHandler) UpdateMetric(c *gin.Context) {
 		return
 	}
 
-	c.String(http.StatusOK, "Metric %s updated successfully\n", mName)
+	c.String(http.StatusOK, "Metric %s updated successfully\n", dto.ID)
 }
-
-
 
 // BatchUpdateMetrics обновляет метрики батчами.
 func (h *MetricHandler) BatchUpdateMetrics(c *gin.Context) {
-	var metrics []*entities.MetricDTO
+	var dtos []*entities.MetricDTO
 
-	err := json.NewDecoder(c.Request.Body).Decode(&metrics)
+	jsonBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		writeError(c, fmt.Errorf("error decoding JSON: %w", err))
-		return
-	}
-	fmt.Printf("Metrics: %v\n", metrics)
-
-	if err := h.metricService.BatchUpdateMetrics(metrics); err != nil {
 		writeError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, metrics)
+	if err := json.Unmarshal(jsonBytes, &dtos); err != nil {
+		writeError(c, err)
+		return
+	}
+
+	if err := h.metricService.BatchUpdateMetrics(dtos); err != nil {
+		writeError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, "{}")
 }
 
 // GetMetric возвращает метрику по имени и типу.
 func (h *MetricHandler) GetMetric(c *gin.Context) {
-	var mName, mType string
-
-	if isJSONRequest(c) {
-		var dto *entities.MetricDTO
-
-		err := json.NewDecoder(c.Request.Body).Decode(&dto)
-		if err != nil {
-			writeError(c, err)
-			return
-		}
-
-		mName = dto.ID
-		mType = dto.MType
-
-	} else {
-		mName = c.Param("name")
-		mType = c.Param("type")
+	dto, err := req2MetricRequestDTO(c)
+	if err != nil {
+		writeError(c, errs.ErrBadRequest)
+		return
 	}
 
-	m, err := h.metricService.GetMetric(mName, mType)
+	m, err := h.metricService.GetMetric(dto.ID, dto.MType.String())
 	if err != nil {
 		writeError(c, err)
 		return
 	}
-
 	if isJSONRequest(c) {
 		dto, err := entities.NewMetricDTO(m.GetName(), m.GetType().String(), m.GetValue())
 		if err != nil {

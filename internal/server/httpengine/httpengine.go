@@ -1,12 +1,16 @@
-// Package engine предоставляет функции для создания и настройки Gin engine.
-package engine
+// Package httpengine предоставляет функции для создания и настройки Gin engine.
+package httpengine
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/gitslim/monit/internal/handlers"
 	"github.com/gitslim/monit/internal/logging"
@@ -42,21 +46,31 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 		}
 	}()
 
-	// Middlewares.
+	// Миддлвари
+	if cfg.TrustedSubnet != "" {
+		log.Info("Using trusted subnet middleware")
+		r.Use(middleware.TrustedSubnetMiddleware(log, cfg.TrustedSubnet))
+	}
+
+	log.Info("Using gzip middleware")
 	r.Use(middleware.GzipMiddleware())
+
 	if cfg.CryptoKey != "" {
-		log.Debug("Using decrypt middleware")
+		log.Info("Using decrypt middleware")
 		dmw, err := middleware.DecryptMiddleware(cfg.CryptoKey)
 		if err != nil {
 			return nil, err
 		}
 		r.Use(dmw)
 	}
-	r.Use(middleware.LoggerMiddleware(log))
+
 	if cfg.Key != "" {
-		log.Debug("Using signature middleware")
+		log.Info("Using signature middleware")
 		r.Use(middleware.SignatureMiddleware(log, cfg.Key))
 	}
+
+	log.Info("Using logger middleware")
+	r.Use(middleware.LoggerMiddleware(log))
 
 	// Загрузка шаблонов HTML.
 	t, err := getTemplateGlob()
@@ -78,4 +92,45 @@ func CreateGinEngine(cfg *conf.Config, log *logging.Logger, ginMode string, metr
 	r.GET("/ping", metricHandler.PingStorage)
 
 	return r, err
+}
+
+// StartHTTPServer запускает http сервер.
+func StartHTTPServer(ctx context.Context, cfg *conf.Config, log *logging.Logger, wg *sync.WaitGroup, metricService *services.MetricService) {
+	defer wg.Done()
+
+	// Создание gin engine.
+	r, err := CreateGinEngine(cfg, log, gin.ReleaseMode, metricService)
+	if err != nil {
+		log.Fatalf("HTTP server failed to create gin engine: %v", err)
+	}
+
+	// Регистрация pprof.
+	pprof.Register(r)
+
+	// Создаем сервер.
+	srv := &http.Server{
+		Addr:    cfg.Addr,
+		Handler: r,
+	}
+
+	// Запуск сервера в горутине.
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed to start: %v", err)
+		}
+	}()
+
+	log.Infof("HTTP server is running on %v", cfg.Addr)
+
+	// Ожидаем сигнал завершения.
+	<-ctx.Done()
+
+	// Инициируем graceful shutdown.
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("HTTP server forced to shutdown:", err)
+		return
+	}
+
+	log.Info("HTTP server stopped gracefully.")
+
 }

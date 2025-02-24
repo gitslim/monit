@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package gitslim.monit.pb.v1;
+
+option go_package = "pkg/pb/v1";
+
+message Metric {
+  string id = 1;
+  string type = 2;
+  sint64 delta = 3;
+  double value = 4;
+}
+
+message ListMetricsRequest {}
+
+message ListMetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+message GetMetricRequest {
+  string id = 1;
+  string type = 2;
+}
+
+message GetMetricResponse {
+  Metric metric = 1;
+}
+
+message UpdateMetricRequest {
+  Metric metric = 1;
+}
+
+message UpdateMetricResponse {
+  string message = 1;
+}
+
+message UpdateMetricsRequest {
+  repeated Metric metrics = 1;
+}
+
+message UpdateMetricsResponse {
+  string message = 1;
+}
+
+message PingStorageRequest {}
+
+message PingStorageResponse {
+  string message = 1;
+}
+
+service Monit {
+  rpc ListMetrics(ListMetricsRequest) returns (ListMetricsResponse) {}
+  rpc GetMetric(GetMetricRequest) returns (GetMetricResponse) {}
+  rpc UpdateMetric(UpdateMetricRequest) returns (UpdateMetricResponse) {}
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse) {}
+  rpc PingStorage(PingStorageRequest) returns (PingStorageResponse) {}
+}

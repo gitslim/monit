@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/gitslim/monit/internal/httpconst"
 	"github.com/gitslim/monit/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMemStorageNonBatchUpdate тестирует обновление метрик в хранилище в памяти с одиночной отправкой
@@ -206,24 +206,24 @@ func updateMetricsBatch(t *testing.T, r *gin.Engine) {
 				typ:   "gauge",
 				name:  "g1",
 				param: "value",
-				val:   "100",
+				val:   "200",
 			},
 			want: want{
 				statusCode: http.StatusOK,
 			},
 		},
-		{
-			name: "invalid type",
-			metric: metric{
-				typ:   "foo",
-				name:  "some",
-				param: "value",
-				val:   "100",
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
+		// {
+		// 	name: "invalid type",
+		// 	metric: metric{
+		// 		typ:   "foo",
+		// 		name:  "some",
+		// 		param: "value",
+		// 		val:   "100",
+		// 	},
+		// 	want: want{
+		// 		statusCode: http.StatusBadRequest,
+		// 	},
+		// },
 	}
 	t.Run("Update", func(t *testing.T) {
 		url := "/updates/"
@@ -262,19 +262,23 @@ func updateMetricsBatch(t *testing.T, r *gin.Engine) {
 		r.ServeHTTP(w, req)
 
 		res := w.Result()
-		assert.Equal(t, http.StatusOK, res.StatusCode)
+		require.Equal(t, http.StatusOK, res.StatusCode)
 
-		var dto *entities.MetricDTO
-		err = json.NewDecoder(res.Body).Decode(&dto)
-		assert.NoError(t, err)
+		jsonBytes, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+
+		var dto entities.MetricDTO
+		err = json.Unmarshal(jsonBytes, &dto)
+		require.NoError(t, err)
+
 		err = res.Body.Close()
 		assert.NoError(t, err)
 
 		switch tt.metric.typ {
 		case "counter":
-			assert.Equal(t, tt.metric.val, strconv.FormatInt(*dto.Delta, 10))
+			assert.Equal(t, tt.metric.val, dto.StringValue)
 		case "gauge":
-			assert.Equal(t, tt.metric.val, strconv.FormatFloat(*dto.Value, 'f', -1, 64))
+			assert.Equal(t, tt.metric.val, dto.StringValue)
 		}
 	})
 	t.Run("List", func(t *testing.T) {

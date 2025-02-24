@@ -98,8 +98,8 @@ func sendJSON(ctx context.Context, cfg *conf.Config, client *http.Client, url st
 	return nil
 }
 
-// SendMetrics отправляет метрики на сервер в формате JSON батчем или по одной.
-func SendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
+// HTTPSendMetrics отправляет метрики на сервер в формате JSON батчем или по одной.
+func HTTPSendMetrics(ctx context.Context, cfg *conf.Config, client *http.Client, metrics []*entities.MetricDTO, batch bool) error {
 	serverURL := fmt.Sprintf("http://%s", cfg.Addr)
 
 	// Ретраи при сбое.

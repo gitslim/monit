@@ -85,26 +85,35 @@ func NewMemStorage(shouldBackupSync bool, backupWriter io.Writer) *MemStorage {
 }
 
 // UpdateOrCreateMetric обновляет значение метрики, если метрика отстутствует то создает ее.
-func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricType, value interface{}) error {
-	var m entities.Metric
-
-	metric, err := s.GetMetric(mName, mType.String())
-	if err != nil {
-		switch mType {
-		case entities.Gauge:
-			m = entities.NewGaugeMetric(mName)
-		case entities.Counter:
-			m = entities.NewCounterMetric(mName)
+func (s *MemStorage) UpdateOrCreateMetric(dto entities.MetricDTO) error {
+	fmt.Println("UpdateOrCreateMetric", dto)
+	if m, err := s.GetMetric(dto.ID, dto.MType); err == nil {
+		switch dto.MType {
+		case entities.Gauge.String():
+			if err = m.SetValue(dto.GetValue()); err == nil {
+				return err
+			}
+		case entities.Counter.String():
+			if err = m.SetValue(dto.GetDelta()); err == nil {
+				return err
+			}
 		}
+		s.metrics.Store(m.GetName(), m)
 	} else {
-		m = metric
+		switch dto.MType {
+		case entities.Gauge.String():
+			m, err = entities.NewGaugeMetricFromDTO(&dto)
+			if err != nil {
+				return err
+			}
+		case entities.Counter.String():
+			m, err = entities.NewCounterMetricFromDTO(&dto)
+			if err != nil {
+				return err
+			}
+		}
+		s.metrics.Store(m.GetName(), m)
 	}
-
-	if err := m.SetValue(value); err != nil {
-		return err
-	}
-
-	s.metrics.Store(mName, m)
 
 	if s.shouldBackupSync {
 		if err := s.WriteBackup(s.backupWriter); err != nil {
@@ -116,8 +125,10 @@ func (s *MemStorage) UpdateOrCreateMetric(mName string, mType entities.MetricTyp
 
 // GetMetric получает метрику по имени.
 func (s *MemStorage) GetMetric(mName string, mType string) (entities.Metric, error) {
-	if metric, exists := s.metrics.Load(mName); exists {
-		return metric.(entities.Metric), nil
+	if item, ok := s.metrics.Load(mName); ok {
+		if m, ok := item.(entities.Metric); ok {
+			return m, nil
+		}
 	}
 	return nil, errs.ErrMetricNotFound
 }
@@ -223,38 +234,7 @@ func (s *MemStorage) Ping() error {
 // BatchUpdateOrCreateMetrics обновляет данные в хранилище батчами.
 func (s *MemStorage) BatchUpdateOrCreateMetrics(metrics []*entities.MetricDTO) error {
 	for _, dto := range metrics {
-
-		var m entities.Metric
-
-		mType, err := entities.GetMetricType(dto.MType)
-		if err != nil {
-			fmt.Printf("Unknown metric type: %v\n", err)
-		}
-		switch mType {
-		case entities.Gauge:
-			m, err = entities.NewGaugeMetricFromDTO(dto)
-			if err != nil {
-				fmt.Printf("Error creating gauge metric: %v\n", err)
-				continue
-			}
-		case entities.Counter:
-			m, err = entities.NewCounterMetricFromDTO(dto)
-			if err != nil {
-				fmt.Printf("Error creating counter metric: %v\n", err)
-				continue
-			}
-		default:
-			fmt.Printf("Unknown metric type: %v\n", mType)
-			continue
-		}
-
-		s.metrics.Store(m.GetName(), m)
-
-		if s.shouldBackupSync {
-			if err := s.WriteBackup(s.backupWriter); err != nil {
-				return err
-			}
-		}
+		s.UpdateOrCreateMetric(*dto)
 	}
 	return nil
 }

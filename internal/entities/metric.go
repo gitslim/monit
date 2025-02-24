@@ -47,8 +47,6 @@ type Metric interface {
 	GetType() MetricType
 	// GetValue возвращает значение метрики.
 	GetValue() interface{}
-	// GetStringValue возвращает строковое представление значения метрики.
-	GetStringValue() string
 	// SetValue устанавливает новое значение метрики.
 	SetValue(interface{}) error
 	// GetStringValue возвращает строковое представление значения метрики.
@@ -93,17 +91,6 @@ func NewGaugeMetric(name string) *GaugeMetric {
 	return &GaugeMetric{Name: name}
 }
 
-// NewGaugeMetricFromDTO создает новую метрику GaugeMetric из DTO.
-func NewGaugeMetricFromDTO(dto *MetricDTO) (*GaugeMetric, error) {
-	if dto.ID == "" || dto.Value == nil {
-		return nil, fmt.Errorf("invalid gauge metric dto: %v", dto)
-	}
-	return &GaugeMetric{
-		Name:  dto.ID,
-		Value: *dto.Value,
-	}, nil
-}
-
 // GetName возвращает имя метрики.
 func (g *GaugeMetric) GetName() string {
 	return g.Name
@@ -119,11 +106,6 @@ func (g *GaugeMetric) GetValue() interface{} {
 	return g.Value
 }
 
-// GetStringValue возвращает строковое представление значения метрики.
-func (g *GaugeMetric) GetStringValue() string {
-	return fmt.Sprintf("%v", g.GetValue())
-}
-
 // SetValue устанавливает новое значение метрики.
 func (g *GaugeMetric) SetValue(value interface{}) error {
 	if v, ok := value.(float64); ok {
@@ -136,7 +118,7 @@ func (g *GaugeMetric) SetValue(value interface{}) error {
 
 // String возвращает строковое представление значения метрики.
 func (g *GaugeMetric) String() string {
-	return g.GetStringValue()
+	return fmt.Sprintf("GaugeMetric{Name: %s, Value: %v}", g.Name, g.Value)
 }
 
 // CounterMetric реализация метрики Counter.
@@ -177,17 +159,6 @@ func NewCounterMetric(name string) *CounterMetric {
 	return &CounterMetric{Name: name}
 }
 
-// NewCounterMetricFromDTO создает новую метрику CounterMetric из DTO.
-func NewCounterMetricFromDTO(dto *MetricDTO) (*CounterMetric, error) {
-	if dto.ID == "" || dto.Delta == nil {
-		return nil, fmt.Errorf("invalid counter metric dto: %v", dto)
-	}
-	return &CounterMetric{
-		Name:  dto.ID,
-		Value: *dto.Delta,
-	}, nil
-}
-
 // GetName возвращает имя метрики.
 func (c *CounterMetric) GetName() string {
 	return c.Name
@@ -203,11 +174,6 @@ func (c *CounterMetric) GetValue() interface{} {
 	return c.Value
 }
 
-// GetStringValue возвращает строковое представление значения метрики.
-func (c *CounterMetric) GetStringValue() string {
-	return fmt.Sprintf("%v", c.GetValue())
-}
-
 // SetValue устанавливает значение метрики.
 func (c *CounterMetric) SetValue(value interface{}) error {
 	if v, ok := value.(int64); ok {
@@ -219,5 +185,5 @@ func (c *CounterMetric) SetValue(value interface{}) error {
 
 // String возвращает строковое представление значения метрики.
 func (c *CounterMetric) String() string {
-	return fmt.Sprintf("%v", c.GetValue())
+	return fmt.Sprintf("CounterMetric{Name: %s, Value: %v}", c.Name, c.Value)
 }

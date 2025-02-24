@@ -1,4 +1,4 @@
-package agent
+package agent_test
 
 import (
 	"context"
@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSendMetrics тестирует отправку метрик.
-func TestSendMetrics(t *testing.T) {
+// TestAgentSendHTTP тестирует отправку метрик агнтом по http.
+func TestAgentSendHTTP(t *testing.T) {
 	client := &http.Client{}
 	dummyJSON, _ := json.Marshal(nil)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,12 +87,12 @@ func TestSendMetrics(t *testing.T) {
 			metrics := []*entities.MetricDTO{dto}
 			cfg := &conf.Config{Addr: server.URL}
 
-			err = sender.SendMetrics(ctx, cfg, client, metrics, false)
+			err = sender.HTTPSendMetrics(ctx, cfg, client, metrics, false)
 			if tt.sendErr {
 				require.Error(t, err)
 			}
 
-			err = sender.SendMetrics(ctx, cfg, client, metrics, true)
+			err = sender.HTTPSendMetrics(ctx, cfg, client, metrics, true)
 			if tt.sendErr {
 				require.Error(t, err)
 			}
